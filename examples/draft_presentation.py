@@ -20,15 +20,15 @@ simulation_config = SimulationConfig(
     use_lhs_preconditioner=False,
     with_self_collisions=False,
 )
-name = "linear_16"
-simulation_config.use_green_strain = False
-simulation_config.use_linear_solver = True
-simulation_config.use_constant_contact_integral = True
+name = "test_green"
+# simulation_config.use_green_strain = False
+# simulation_config.use_linear_solver = True
+# simulation_config.use_constant_contact_integral = True
 
 animation_backend = "three"  # None
 
 
-def main(mesh_density=16, final_time=3, plot_animation=True):  # 100
+def main(mesh_density=16, final_time=2, plot_animation=True):  # 100
     schedule = Schedule(final_time=final_time, time_step=0.01)
     body_prop = TimeDependentBodyProperties(
         mu=8,

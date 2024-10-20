@@ -51,6 +51,13 @@
             "justMyCode": false
         },
         {
+            "name": "Draft presentation",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/examples/draft_presentation.py",
+            "justMyCode": false
+        },
+        {
             "name": "Train graph",
             "type": "python",
             "request": "launch",

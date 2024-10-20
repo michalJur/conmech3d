@@ -223,14 +223,30 @@ class Calculator:
         initial_t=None,
         timer=Timer(),
     ):
+        return Calculator.solve_skinning_backwards_base(
+            scene=scene,
+            energy_functions=energy_functions,
+            initial_a=initial_a,
+            initial_t=initial_t,
+            timer=timer,
+            with_base_for_comparison=False,
+        )
+
+    @staticmethod
+    def solve_skinning_backwards_base(
+        scene: Scene,
+        energy_functions: EnergyFunctions,
+        initial_a,
+        initial_t=None,
+        timer=Timer(),
+        with_base_for_comparison=True,
+    ):
         _ = initial_a, initial_t
         energy_functions = (
             energy_functions[0]
             if hasattr(energy_functions, "__len__")
             else energy_functions
         )
-
-        dense_path = cmh.get_base_for_comarison()
 
         with timer["reduced_solver"]:
             scene.lifted_acceleration, _ = Calculator.solve(
@@ -239,12 +255,13 @@ class Calculator:
                 initial_a=scene.exact_acceleration,
                 timer=timer,
             )
-            if dense_path is None:
-                exact_acceleration = scene.lifted_acceleration
-            else:
+            if with_base_for_comparison:
+                dense_path = cmh.get_base_for_comarison()
                 exact_acceleration, _ = cmh.get_exact_acceleration(
                     scene=scene, path=dense_path
                 )
+            else:
+                exact_acceleration = scene.lifted_acceleration
         with timer["lift_data"]:
             scene.reduced.exact_acceleration = scene.lift_acceleration_from_position(
                 exact_acceleration

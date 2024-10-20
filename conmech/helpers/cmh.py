@@ -98,11 +98,11 @@ def find_files_by_name(directory, name):
 
 
 def get_base_for_comarison():
-    print("USING BASE FOR COMPARISON")
     all_paths = glob(
         "output/**/scenarios/*skinning_backwards*.scenes_comparer", recursive=True
     )
     assert len(all_paths) == 1
+    print("USING BASE FOR COMPARISON")
     return all_paths[0]
 
 

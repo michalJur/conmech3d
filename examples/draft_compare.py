@@ -21,8 +21,8 @@ def main():
         "skinning",
         "net",
         "pca",
-    ]  # , "pca"]  # Do not use "normal" - does not contain reduced
-    # run_all_simulations(modes=modes)
+    ] # Do not use "normal" - does not contain reduced
+    run_all_simulations(modes=modes)
     compare_latest(modes=modes)
     input("Press Enter to continue...")
 
@@ -41,8 +41,7 @@ def run_simulation(mode):
     config = get_train_config(shell=False, mode=mode)
 
     all_scenarios = scenarios.all_validation(config.td, config.sc)
-    all_scenarios = all_scenarios[-1]
-
+    all_scenarios = all_scenarios[-1] #-1]
     # all_scenarios[0].schedule.final_time = 1.
 
     simulation_runner.run_examples(

@@ -51,7 +51,7 @@ class Config:
     shell: bool = False
     timestamp_skip: int = 10000
     run_timestamp: float = int(time.time() * timestamp_skip)
-    current_time: str = datetime.now().strftime("%m.%d-%H.%M.%S")
+    current_time: str = datetime.now().strftime("%y.%m.%d-%H.%M.%S")
     verbose: bool = True
 
     animation_backend: str = "three"  # "matplotlib blender three"

@@ -21,7 +21,7 @@ def get_solve_function(simulation_config):
     if simulation_config.mode == "normal":
         return Calculator.solve
     if simulation_config.mode == "pca":
-        return Calculator.solve_skinning_backwards  ### solve
+        return Calculator.solve_skinning_backwards_base
     if simulation_config.mode == "compare_reduced":
         return Calculator.solve_compare_reduced
     if simulation_config.mode == "skinning":
@@ -186,7 +186,7 @@ def save_scene(scene: Scene, scenes_path: str, save_animation: bool):
     pkh.append_data(data=blender_data, data_path=blender_data_path, lock=None)
 
     # Comparer
-    if hasattr(scene, 'reduced'):
+    if hasattr(scene, "reduced"):
         comparer_data_path = scenes_path + "_comparer"
 
         comparer_data = {

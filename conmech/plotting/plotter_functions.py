@@ -104,7 +104,7 @@ def save_results_three(file_path, json_dict):
 
 
 def plot_using_blender(output: bool = True):
-    path = "~/Desktop/Blender/blender-3.2.0-linux-x64/blender"  # TODO: Move to configuration
+    path = "~/Desktop/Blender/blender-4.1.1-linux-x64/blender"  # TODO: Move to configuration
     args = " --background --python ~/Desktop/conmech3d/blender/load.py --render"
     print("Plotting using Blender...")
     stdout = sys.stdout if output else subprocess.DEVNULL
