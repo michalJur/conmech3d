@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 import psutil
@@ -75,7 +75,7 @@ class TrainingData:
 
 @dataclass
 class TrainingConfig(Config):
-    td: TrainingData = TrainingData()
+    td: TrainingData = field(default_factory=lambda: TrainingData())
 
     device: str = "cuda"  # "cpu" if TEST else "cuda"
     #:" + ",".join(map(str, DEVICE_IDS)))  # torch.cuda.is_available()

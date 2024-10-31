@@ -823,7 +823,7 @@ def all_train(td, sc):
     #     }
     # )
 
-    scale_forces_list = [1.5, 2.0, 2.5, 3.0]
+    scale_forces_list = [1.5, 2.0, 2.5, 3.0] ###
     obstacle_distance_scale = 1.1  # 1.2 #0.7
     hardness = 100.0
     friction = 2.0  # 0.0 (5.0)

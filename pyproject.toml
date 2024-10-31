@@ -1,0 +1,32 @@
+[tool.poetry]
+name = "conmech3d"
+version = "0.1.0"
+description = ""
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.11"
+jax = {extras = ["cuda12"], version = "^0.4.34"}
+numba = "^0.60.0"
+python-dotenv = "^1.0.1"
+cython = "^3.0.11"
+scipy = "^1.14.1"
+matplotlib = "^3.9.2"
+networkx = "^3.4.1"
+gmsh = "^4.13.1"
+pygmsh = "^7.1.17"
+dmsh = "^0.3.4"
+meshzoo = "^0.11.6"
+tqdm = "^4.66.5"
+psutil = "^6.1.0"
+pytest = "^8.3.3"
+pytest-xdist = "^3.6.1"
+pytest-env = "^1.1.5"
+pandas = "^2.2.3"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
