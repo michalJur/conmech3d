@@ -477,7 +477,7 @@ def solve(
 ):
     _ = initial_a, initial_t
 
-    dense_path = cmh.get_base_for_comarison()
+    dense_path = cmh.get_base_for_comarison() ###
     with timer["jax_calculator"]:
         if dense_path is None:
             scene.reduced.exact_acceleration, _ = Calculator.solve(

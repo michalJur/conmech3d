@@ -102,7 +102,6 @@ def get_base_for_comarison():
         "output/**/scenarios/*skinning_backwards*.scenes_comparer", recursive=True
     )
     assert len(all_paths) == 1
-    print("USING BASE FOR COMPARISON")
     return all_paths[0]
 
 

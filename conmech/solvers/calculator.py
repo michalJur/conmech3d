@@ -93,6 +93,7 @@ class Calculator:
         # if cmh.get_from_os("JAX_ENABLE_X64"):
         #     assert state.converged
 
+        print("f_k: ", state.f_k, ' k: ', state.k, ' x_k norm: ', jnp.linalg.norm(state.x_k), ' x shape: ', len(state.x_k))
         assert not jnp.isnan(state.x_k).any()
 
         if verbose and not state.converged:
@@ -115,16 +116,17 @@ class Calculator:
         verbose: bool = True,
     ) -> np.ndarray:
         from conmech.helpers.pca import p_from_vector, p_to_vector
-
-        initial_disp = nph.acceleration_to_displacement(initial_vector, args)
-
         dim = 3
-        initial_u = nph.unstack(initial_disp, dim=dim)
 
-        initial_u_latent = p_to_vector(energy_functions.projection, initial_u)
+        # initial_disp = nph.acceleration_to_displacement(initial_vector, args)
+        # initial_u = nph.unstack(initial_disp, dim=dim)
+        # initial_u_latent = p_to_vector(energy_functions.projection, initial_u)
 
-        u_latent = Calculator.minimize_jax(
-            initial_vector=initial_u_latent,
+        initial_a = nph.unstack(initial_vector, dim=dim)
+        initial_a_latent = p_to_vector(energy_functions.projection, initial_a)
+
+        a_latent = Calculator.minimize_jax( # u_latent
+            initial_vector=initial_a_latent, #initial_u_latent,
             args=args,
             hes_inv=hes_inv,
             scene=scene,
@@ -132,12 +134,17 @@ class Calculator:
             verbose=verbose,
         )
 
-        u_projected = p_from_vector(energy_functions.projection, u_latent)
-        u_projected_vector = nph.stack(u_projected)
+        # u_projected = p_from_vector(energy_functions.projection, u_latent)
+        # u_projected_vector = nph.stack(u_projected)
 
-        return np.asarray(
-            nph.displacement_to_acceleration(np.asarray(u_projected_vector), args)
-        )
+        # return np.asarray(
+        #     nph.displacement_to_acceleration(np.asarray(u_projected_vector), args)
+        # )
+    
+        a_projected = p_from_vector(energy_functions.projection, a_latent)
+        a_projected_vector = nph.stack(a_projected)
+
+        return np.asarray(a_projected_vector)
 
     @staticmethod
     def solve_skinning(
@@ -152,7 +159,8 @@ class Calculator:
         #     energy_functions[1] if hasattr(energy_functions, "__len__") else energy_functions
         # )
 
-        dense_path = cmh.get_base_for_comarison()
+        # TODO: Important change - not using saved data for comparison, refactor this
+        dense_path = None #cmh.get_base_for_comarison()
 
         with timer["dense_solver"]:
             if dense_path is None:
@@ -248,7 +256,7 @@ class Calculator:
                 initial_a=scene.exact_acceleration,
                 timer=timer,
             )
-            if with_base_for_comparison:
+            if False: #with_base_for_comparison:
                 dense_path = cmh.get_base_for_comarison()
                 exact_acceleration, _ = cmh.get_exact_acceleration(
                     scene=scene, path=dense_path

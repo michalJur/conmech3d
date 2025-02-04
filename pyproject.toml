@@ -8,7 +8,11 @@ package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.11"
-jax = {extras = ["cuda12"], version = "^0.4.34"}
+jax = {version = "0.4.34", extras = ["cuda12"]} # cuda12_local
+# nvidia-cudnn-cu12 = "9.1.1.17"
+# jaxlib = {version = "0.4.28", extras = ["cuda12-cudnn89"], source = "jax_cuda_releases"}
+# numpy = "1.26.4"
+# jaxlib = {version = "0.4.28", extras = ["cuda12"]}
 numba = "^0.60.0"
 python-dotenv = "^1.0.1"
 cython = "^3.0.11"
@@ -25,7 +29,23 @@ pytest = "^8.3.3"
 pytest-xdist = "^3.6.1"
 pytest-env = "^1.1.5"
 pandas = "^2.2.3"
+flax = "^0.10.0"
+torch-geometric = "^2.6.1"
+tensorflow = "^2.18.0"
+multiprocess = "^0.70.17"
+torch = {version = "^2.5.1", source="torchcpu"}
 
+
+# [[tool.poetry.source]]
+# name = "jax_cuda_releases"
+# url = "https://storage.googleapis.com/jax-releases/jax_cuda_releases.html"
+# priority = "explicit"
+
+
+[[tool.poetry.source]]
+name = "torchcpu"
+url = "https://download.pytorch.org/whl/cpu"
+priority = "explicit"
 
 [build-system]
 requires = ["poetry-core"]

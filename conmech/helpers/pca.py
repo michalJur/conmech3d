@@ -72,6 +72,7 @@ def save_pca(projection, file_path="./output/PCA"):
 def load_pca(file_path="./output/PCA"):
     with open(file_path, "rb") as file:
         projection = pickle.load(file)
+    # projection['matrix'] = projection['matrix'][:1].copy()
     return projection
 
 

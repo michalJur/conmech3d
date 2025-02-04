@@ -22,8 +22,8 @@ class DataNorm(nn.Module):
 
     @nn.compact
     def __call__(self, x):
-        mean = self.variable("batch_stats", "mean", self.mean_init, x.shape[1])
-        std = self.variable("batch_stats", "std", self.std_init, x.shape[1])
+        mean = self.variable("batch_stats", "mean", self.mean_init, x.shape[1]) # CHECK: Not batch stats any more?
+        std = self.variable("batch_stats", "std", self.std_init, x.shape[1]) # CHECK: Why do we need to use batch stats?
         # x_std.value += 0.1 # Could be modified here and will be saved
         output = (x - mean.value) / std.value
         output = jnp.nan_to_num(output)

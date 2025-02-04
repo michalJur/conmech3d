@@ -31,6 +31,7 @@ def run_all_simulations(modes):
     cmh.print_jax_configuration()
 
     for mode in modes:
+        print("MODE: ", mode)
         run_simulation(mode)
 
 

@@ -422,17 +422,24 @@ class EnergyFunctions:
         if simulation_config.mode == "pca":
             from conmech.helpers.pca import load_pca, p_from_vector
 
+            # SCALING_FACTOR = 1.
             self.projection = load_pca()
 
             def to_displacement_by_factor_pca(energy_function):
-                def reformulation(u_latent, args):
-                    u_projected = p_from_vector(self.projection, u_latent)
-                    u_projected_vector = nph.stack(u_projected)
+                # def reformulation(u_latent, args):
+                #     u_projected = p_from_vector(self.projection, u_latent)
+                #     u_projected_vector = nph.stack(u_projected)
 
-                    return energy_function(
-                        nph.displacement_to_acceleration(u_projected_vector, args),
-                        args,
-                    )
+                #     return SCALING_FACTOR * energy_function(
+                #         nph.displacement_to_acceleration(u_projected_vector, args),
+                #         args,
+                #     )
+        
+                def reformulation(a_latent, args):
+                    a_projected = p_from_vector(self.projection, a_latent)
+                    a_projected_vector = nph.stack(a_projected)
+
+                    return energy_function(a_projected_vector, args)
 
                 return reformulation
 
