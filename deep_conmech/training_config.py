@@ -42,9 +42,9 @@ class TrainingData:
     velocity_in_random_factor: float = displacement_in_random_factor * 100.0
     # 0.005 * velocity_random_scale
 
-    raport_at_examples: int = 256 * 64
+    raport_at_examples: int = 256 * 64 // 4
     save_at_epochs: int = 1
-    validate_at_epochs: int = 1  # 3
+    validate_at_epochs: int = 3
     validate_scenarios_at_epochs: Optional[int] = None  # 30  # None 3
 
     batch_size: int = 1  # 4  # 8  # 1  # 16  # 32  # 16  # 32 # 256
@@ -94,7 +94,7 @@ class TrainingConfig(Config):
 
     dataset_images_count: Optional[float] = None  # 8 None
 
-    log_dataset_stats: bool = True
+    log_dataset_stats: bool = False #True
     with_train_scenes_file: bool = False
 
     max_epoch_number: Optional[int] = None

@@ -78,6 +78,15 @@ class SceneLayers(Scene):
             closest_weights=from_base.closest_weights,
         )
 
+    def reorient_and_set_lifted(self):
+        reorient_to_reduced = True
+        if reorient_to_reduced:
+            print('REORIENTING!')
+            self.exact_acceleration = self.reorient_to_reduced(self.exact_acceleration)
+ 
+        self.lifted_acceleration = self.exact_acceleration
+        self.reduced.lifted_acceleration = self.reduced.exact_acceleration
+
     def set_reduced(self):
         self.all_layers = []
         layer_mesh_prop = copy.deepcopy(self.mesh_prop)
@@ -263,7 +272,7 @@ class SceneLayers(Scene):
         )
         return self.from_displacement(new_displacement)
 
-    def recenter_by_reduced(
+    def recenter_by_new_reduced(
         self, new_displacement, reduced_exact_acceleration
     ):  # TODO: Merge with reorient_to_reduced
         reduced_displacement_new = self.reduced.to_displacement(
@@ -271,6 +280,16 @@ class SceneLayers(Scene):
         )
         base = self.reduced.get_rotation(reduced_displacement_new)
         position = np.mean(reduced_displacement_new, axis=0)
+        recentered_new_displacement = self.get_displacement(
+            base=base, position=position, base_displacement=new_displacement
+        )
+        return recentered_new_displacement
+    
+    def recenter_by_current_reduced(
+        self, new_displacement
+    ):  # TODO: Merge with reorient_to_reduced
+        base = self.reduced.get_rotation(self.reduced.displacement_old)
+        position = np.mean(self.reduced.displacement_old, axis=0)
         recentered_new_displacement = self.get_displacement(
             base=base, position=position, base_displacement=new_displacement
         )

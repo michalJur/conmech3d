@@ -27,7 +27,7 @@ class Logger:
         if self.config.log_dataset_stats:
             print("Saving histogram...")
             statistics = self.dataset.get_statistics_pandas()
-            for st in statistics.data:
+            for st in statistics.values():
                 self.save_hist_and_json(st=st)
 
     def save_parameters(self):

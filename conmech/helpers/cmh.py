@@ -98,6 +98,7 @@ def find_files_by_name(directory, name):
 
 
 def get_base_for_comarison():
+    raise ValueError('Using Base')
     all_paths = glob(
         "output/**/scenarios/*skinning_backwards*.scenes_comparer", recursive=True
     )
@@ -136,22 +137,11 @@ def load_simulation(simulation_path):
 
 def get_simulation(scene_files, label):
     labels = [s for s in scene_files if label in s]
-    # assert len(labels) == 1
+    assert len(labels) == 1
     labels.sort()
     label = labels[-1]
     print(label)
     return load_simulation(label)
-
-
-def get_exact_acceleration(scene, path):
-    normal = load_simulation(path)
-    exact_acceleration = normal[scene.step]["exact_acceleration"]
-    scene.step += 1  # TODO: Move to iterate self
-
-    reduced_exact_acceleration = scene.lift_acceleration_from_position(
-        exact_acceleration
-    )
-    return exact_acceleration, reduced_exact_acceleration
 
 
 ####

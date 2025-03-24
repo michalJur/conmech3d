@@ -360,7 +360,7 @@ RANGE_FACTOR = 0.0001
 
 @dataclass
 class EnergyFunctions:
-    def __init__(self, simulation_config: SimulationConfig):
+    def __init__(self, simulation_config: SimulationConfig, pca=False):
         static_args = StaticEnergyArguments(
             use_green_strain=simulation_config.use_green_strain,
             use_nonconvex_friction_law=simulation_config.use_nonconvex_friction_law,
@@ -419,21 +419,13 @@ class EnergyFunctions:
 
         self.temperature_cost_function = None
 
-        if simulation_config.mode == "pca":
+        if pca:
             from conmech.helpers.pca import load_pca, p_from_vector
 
             # SCALING_FACTOR = 1.
             self.projection = load_pca()
 
             def to_displacement_by_factor_pca(energy_function):
-                # def reformulation(u_latent, args):
-                #     u_projected = p_from_vector(self.projection, u_latent)
-                #     u_projected_vector = nph.stack(u_projected)
-
-                #     return SCALING_FACTOR * energy_function(
-                #         nph.displacement_to_acceleration(u_projected_vector, args),
-                #         args,
-                #     )
         
                 def reformulation(a_latent, args):
                     a_projected = p_from_vector(self.projection, a_latent)

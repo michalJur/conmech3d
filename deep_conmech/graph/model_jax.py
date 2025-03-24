@@ -1,4 +1,5 @@
 import gc
+from pathlib import Path
 import time
 from functools import partial
 from typing import Any, Callable, List, Optional
@@ -10,12 +11,12 @@ import jax.numpy as jnp
 import numpy as np
 import optax
 import orbax.checkpoint
-import tensorflow as tf
+# import tensorflow as tf
 import torch
 import torch.utils
 from flax.training import train_state
 from jax import lax
-from jax.experimental import jax2tf
+# from jax.experimental import jax2tf
 from torch_geometric.data.batch import Data
 
 from conmech.helpers import cmh
@@ -85,7 +86,7 @@ class GraphModelDynamicJax:
         self.epoch = 0
         self.examples_seen = 0
 
-        # self.logger.save_parameters_and_statistics() ###
+        self.logger.save_parameters_and_statistics() ###
 
     def is_at_skip(self, skip):
         return skip is not None and self.epoch % skip == 0
@@ -129,6 +130,9 @@ class GraphModelDynamicJax:
         # plot_weights(state.params['ProcessorLayer_1']['ForwardNet_1']['Dense_0']['bias'], "ProcessorBias1")
         ###
 
+        # Saving initial checkpoint
+        self.save_checkpoint(states=train_states)
+    
         while (
             self.config.max_epoch_number is None
             or self.epoch < self.config.max_epoch_number
@@ -183,8 +187,9 @@ class GraphModelDynamicJax:
         timestamp = cmh.get_timestamp(self.config)
         catalog = f"{self.config.output_catalog}/{self.config.current_time} - JAX GRAPH MODELS"
         cmh.create_folders(catalog)
-        path = f"{catalog}/{timestamp} - MODEL"
-        self.checkpointer.save(directory=path, item=state)
+        path = f"{catalog}/{timestamp} - EPOCH {self.epoch} - MODEL"
+        absolute_path = str(Path(path).absolute())
+        self.checkpointer.save(directory=absolute_path, item=state)
 
     @staticmethod
     def get_checkpoint(rank: int, path: str):
@@ -259,7 +264,7 @@ class GraphModelDynamicJax:
         train: bool,
         tqdm_description: str,
         raport_description: str,
-        devices,
+        devices
     ):
         batch_tqdm = cmh.get_tqdm(
             dataloader, desc=tqdm_description, config=self.config, position=0
@@ -283,7 +288,8 @@ class GraphModelDynamicJax:
                 self.examples_seen += loss_raport.count  # * self.world_size
 
             loss_description = f"{tqdm_description} loss: {(mean_loss_raport.main):.5f}"
-            if batch_id == len(batch_tqdm) - 1:
+            should_raport = self.should_raport_training() if train else self.should_raport_validation(batch_id=batch_id, batches_count=len(batch_tqdm))
+            if should_raport:
                 self.save_raport(
                     states=states,
                     mean_loss_raport=mean_loss_raport,
@@ -296,7 +302,13 @@ class GraphModelDynamicJax:
         gc.enable()
         return states
 
-    def should_raport_training(self, batch_id: int, batches_count: int):
+    def should_raport_training(self):
+        return self.examples_seen % self.config.td.raport_at_examples == 0
+        
+    def should_raport_validation(self, batch_id: int, batches_count: int):
+        return batch_id == batches_count - 1
+    
+    def should_sace_training(self, batch_id: int, batches_count: int):
         return (
             batch_id == batches_count - 1
             or self.examples_seen % self.config.td.raport_at_examples == 0
@@ -459,10 +471,10 @@ def convert_to_jax(layer_list, target_data=None):
     target_data.normalized_new_displacement = (
         thh.convert_tensor_to_jax(target_data.normalized_new_displacement) * SCALE
     )
-    target_data.normalized_new_displacement_skinning = (
-        thh.convert_tensor_to_jax(target_data.normalized_new_displacement_skinning)
-        * SCALE
-    )
+    # target_data.normalized_new_displacement_skinning = (
+    #     thh.convert_tensor_to_jax(target_data.normalized_new_displacement_skinning)
+    #     * SCALE
+    # )
     return layer_list, target_data
 
 
@@ -477,22 +489,13 @@ def solve(
 ):
     _ = initial_a, initial_t
 
-    dense_path = cmh.get_base_for_comarison() ###
     with timer["jax_calculator"]:
-        if dense_path is None:
-            scene.reduced.exact_acceleration, _ = Calculator.solve(
-                scene=scene.reduced,
-                energy_functions=energy_functions[1],  # 0],
-                initial_a=scene.reduced.lifted_acceleration,  # scene.reduced.exact_acceleration, #initial_reduced,
-                timer=timer,
-            )
-        else:
-            (
-                scene.exact_acceleration,
-                scene.reduced.exact_acceleration,
-            ) = cmh.get_exact_acceleration(scene=scene, path=dense_path)
-
-        scene.reduced.lifted_acceleration = scene.reduced.exact_acceleration
+        scene.reduced.exact_acceleration, _ = Calculator.solve(
+            scene=scene.reduced,
+            energy_functions=energy_functions[1],  # 0],
+            initial_a=scene.reduced.lifted_acceleration,  # scene.reduced.exact_acceleration, #initial_reduced,
+            timer=timer,
+        )
 
     device_number = 0  # using GPU 0
 
@@ -514,16 +517,15 @@ def solve(
         scene.norm_lifted_new_displacement = apply_net(args) / SCALE
 
     with timer["jax_translation"]:
-        scene.recentered_norm_lifted_new_displacement = scene.recenter_by_reduced(
-            new_displacement=scene.norm_lifted_new_displacement,
-            reduced_exact_acceleration=scene.reduced.exact_acceleration,
+
+        scene.recentered_norm_lifted_new_displacement = scene.recenter_by_current_reduced(
+            new_displacement=scene.norm_lifted_new_displacement
         )
-        scene.lifted_acceleration = np.array(
+
+        scene.exact_acceleration = np.array(
             scene.from_displacement(scene.recentered_norm_lifted_new_displacement)
         )
 
-    if dense_path is None:
-        return scene.lifted_acceleration, None
     return scene.exact_acceleration, None
 
 

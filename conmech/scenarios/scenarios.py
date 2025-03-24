@@ -811,47 +811,36 @@ def all_train(td, sc):
         return []  # get_train_data(**args)
     args = []
 
-    # scenario bunny_train_scale_forces:2.0_
-    # forces_and_nodes:[-1.  0.  0.]_obstacle_normals:[1.0, 0.0, -1]
-
-    # args.append(
-    #     {
-    #         "scale_forces": 2.0,
-    #         "forces_and_nodes": np.array([-1.0, 0.0, 0.0]),
-    #         "obstacle_normals": np.array([1.0, 0.0, -1.0]),
-    #         "name": "bunny_train_scale_forces"
-    #     }
-    # )
-
-    scale_forces_list = [1.5, 2.0, 2.5, 3.0] ###
-    obstacle_distance_scale = 1.1  # 1.2 #0.7
+    final_time = td.final_time #  0.5
+    
     hardness = 100.0
     friction = 2.0  # 0.0 (5.0)
-    i = 0
+    obstacle_distance_scale = 1.1  # 1.2 # 0.7
+    
+    scale_forces_list = [1.0, 1.5, 2.0, 2.5, 3.0, 3.5]
     for forces_dim in [0, 1, 2]:
         for forces_dir in [-1.0, 1.0]:
             for normals_dim_plus in [0, 1, -1, 2, -2]:
-                forces = [0.0, 0.0, 0.0]
-                forces[forces_dim] = forces_dir
-                forces = np.array(forces)
+                for scale_forces in scale_forces_list:
+                    forces = [0.0, 0.0, 0.0]
+                    forces[forces_dim] = forces_dir
+                    forces = np.array(forces)
 
-                normals = [0.0, 0.0, 0.0]
-                normals[forces_dim] = -forces_dir
-                if normals_dim_plus != 0:
-                    normals[(forces_dim + np.abs(normals_dim_plus)) % 3] = np.sign(
-                        normals_dim_plus
+                    normals = [0.0, 0.0, 0.0]
+                    normals[forces_dim] = -forces_dir
+                    if normals_dim_plus != 0:
+                        normals[(forces_dim + np.abs(normals_dim_plus)) % 3] = np.sign(
+                            normals_dim_plus
+                        )
+                    name = f"bunny_train_scale_forces:{scale_forces}_forces_and_nodes:{forces}_obstacle_normals:{normals}"
+                    args.append(
+                        {
+                            "scale_forces": scale_forces,
+                            "forces_and_nodes": forces,
+                            "obstacle_normals": normals,
+                            "name": name,
+                        }
                     )
-                scale_forces = scale_forces_list[i % len(scale_forces_list)]
-                i += 1
-                name = f"bunny_train_scale_forces:{scale_forces}_forces_and_nodes:{forces}_obstacle_normals:{normals}"
-                args.append(
-                    {
-                        "scale_forces": scale_forces,
-                        "forces_and_nodes": forces,
-                        "obstacle_normals": normals,
-                        "name": name,
-                    }
-                )
     data = []
     data.extend(
         [
@@ -864,7 +853,7 @@ def all_train(td, sc):
                     mesh_density=[td.mesh_density],
                 ),
                 body_prop=default_body_prop_3d,
-                schedule=Schedule(final_time=td.final_time),
+                schedule=Schedule(final_time=final_time),
                 forces_function=arg["scale_forces"]
                 * arg["forces_and_nodes"],  # scale_forces * [0.0, 0.0, -1.0]),
                 obstacle=Obstacle(
@@ -935,6 +924,25 @@ def all_validation(td, sc):
         ]
     return get_valid_data(**args)
 
+
+def all_compare(td, sc):
+    return [
+                # bunny_fall_3d(
+                #     mesh_density=td.mesh_density,
+                #     scale=1,
+                #     final_time=2.0,
+                #     simulation_config=sc,
+                #     scale_forces=5.0,
+                # )
+                bunny_obstacles(
+                    mesh_density=td.mesh_density,
+                    scale=1,
+                    final_time=4.0,
+                    simulation_config=sc,
+                    scale_forces=5.0,
+                )
+            ]
+    
 
 def all_print(td, sc):
     args = get_args(td, sc)

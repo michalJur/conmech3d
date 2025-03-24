@@ -2,6 +2,8 @@
 # if name == "__main__":
 #     SET_ENV()
 
+# import multiprocessing
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -134,7 +136,7 @@ def train_single(
 def visualize(config: TrainingConfig):
     import netron
 
-    checkpoint_path = get_newest_checkpoint_path(config)
+    checkpoint_path = get_checkpoint_path(config)
     dataset = get_train_dataset(config.td.dataset, config=config)
     dataset.initialize_data()
 
@@ -153,7 +155,7 @@ def plot(config: TrainingConfig):
         statistics = None
     all_print_scenaros = scenarios.all_print(config.td, config.sc)
 
-    checkpoint_path = get_newest_checkpoint_path(config)
+    checkpoint_path = get_checkpoint_path(config)
     state = GraphModelDynamicJax.load_checkpointed_net(path=checkpoint_path)
     GraphModelDynamicJax.plot_all_scenarios(state, all_print_scenaros, config)
 
@@ -189,22 +191,19 @@ def run_pca(config: TrainingConfig):
     dataset = get_train_dataset(
         dataset_type=config.td.dataset, config=config, device_count=1
     )
-    # datasets = get_all_val_datasets(config=config, rank=0, world_size=1, device_count=1)
-    # dataset = datasets[1]
     dataset.initialize_data()
     dataloader = base_dataset.get_train_dataloader(dataset)
+    scene = dataset.get_sample_scene()
 
-    # dataloader = None
+    pca.run(dataloader, latent_dim=200, scene=scene, scenario=all_scenarios[0])
 
-    pca.run(dataloader, latent_dim=200, scenario=all_scenarios[0])
-
-    simulation_runner.run_examples(
-        all_scenarios=all_scenarios,
-        file=__file__,
-        plot_animation=True,
-        config=Config(shell=False),
-        save_all=True,
-    )
+    # simulation_runner.run_examples(
+    #     all_scenarios=all_scenarios,
+    #     file=__file__,
+    #     plot_animation=True,
+    #     config=Config(shell=False),
+    #     save_all=True,
+    # )
 
 
 def get_train_dataset(
@@ -287,8 +286,14 @@ def get_newest_checkpoint_path_jax(config: TrainingConfig):
     return path
 
 
-def get_newest_checkpoint_path(config: TrainingConfig):
-    return get_newest_checkpoint_path_jax(config)
+def get_checkpoint_path(config: TrainingConfig=None):
+    return '/home/mjureczka/Desktop/conmech3d/output/25.02.15-00.31.13 - JAX GRAPH MODELS/17397701977692 - EPOCH 16 - MODEL'
+    # return '/home/mjureczka/Desktop/conmech3d/output/25.02.11-13.23.34 - JAX GRAPH MODELS/17393259936453 - EPOCH 3 - MODEL'
+    # return '/home/mjureczka/Desktop/conmech3d/output/25.02.11-13.23.34 - JAX GRAPH MODELS/17392897048005 - EPOCH 0 - MODEL'
+    return '/home/mjureczka/Desktop/conmech3d/output/25.02.11-13.23.34 - JAX GRAPH MODELS/17393623753086 - EPOCH 6 - MODEL'
+    return '/home/mjureczka/Desktop/conmech3d/output/25.02.09-11.09.37 - JAX GRAPH MODELS/17391068243554 - MODEL'
+    return '/home/mjureczka/Desktop/conmech3d/output/25.02.09-11.09.37 - JAX GRAPH MODELS/17391673993210 - MODEL'
+    #return get_newest_checkpoint_path_jax(config)
 
 
 def main(args: Namespace):
@@ -318,6 +323,7 @@ def main(args: Namespace):
 
 
 if __name__ == "__main__":
+    # multiprocessing.set_start_method('spawn')
     # torch.multiprocessing.set_start_method("spawn")  # forkserver")
     parser = ArgumentParser()
     parser.add_argument(

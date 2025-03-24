@@ -87,7 +87,10 @@ def save_three(scene, step, folder, skip=1):
 def save_results_three(file_path, json_dict):
     with open(file_path, "w", encoding="utf-8") as file:
         json.dump(json_dict, file)
+    create_three_list()
 
+
+def create_three_list():
     folder_list = [f[0] for f in os.walk("output") if "0.json" in f[2]]  # [1:]
     folder_list.sort(reverse=True)
     simulations_list, step_list = [], []
@@ -161,3 +164,7 @@ def plot_setting(
         axs = plotter_3d.get_axs(fig)
         plotter_3d.plot_frame(scene=scene, fig=fig, axs=axs, current_time=current_time)
         plt_save(path, extension)
+
+
+if __name__ == "__main__":
+    create_three_list()

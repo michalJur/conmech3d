@@ -14,7 +14,9 @@ from deep_conmech.data.dataset_statistics import FeaturesStatistics
 from deep_conmech.helpers import thh
 from deep_conmech.scene.scene_input import SceneInput
 from deep_conmech.training_config import CLOSEST_COUNT, TrainingData
-
+import sys
+from functools import reduce
+import operator
 
 class DataNorm(nn.Module):
     mean_init: Callable
@@ -244,8 +246,8 @@ class CustomGraphNetJax(nn.Module):
     def __call__(self, args: GraphNetArguments, train: bool):
         latent_dimension = 128  # 128 64
         internal_layer_count = 0  # 0 1
-        message_passes_sparse = 18  # 1 8 12
-        message_passes_dense = 18  # 1 8 12
+        message_passes_sparse = 18  # 1 8 12 ####
+        message_passes_dense = 18  # 1 8 12 ####
         dim = 3
         input_batch_norm = False  # True
         # layer_norm=True

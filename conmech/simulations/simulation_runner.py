@@ -21,7 +21,8 @@ def get_solve_function(simulation_config):
     if simulation_config.mode == "normal":
         return Calculator.solve
     if simulation_config.mode == "pca":
-        return Calculator.solve_skinning_backwards_base
+        return Calculator.solve_compare_reduced
+        # return Calculator.solve_skinning_backwards
     if simulation_config.mode == "compare_reduced":
         return Calculator.solve_compare_reduced
     if simulation_config.mode == "skinning":
@@ -33,12 +34,12 @@ def get_solve_function(simulation_config):
     if "net" in simulation_config.mode:
         from deep_conmech.graph import model_jax
         from deep_conmech.graph.model_jax import GraphModelDynamicJax
-        from deep_conmech.run_model import get_newest_checkpoint_path, get_train_dataset
+        from deep_conmech.run_model import get_checkpoint_path, get_train_dataset
         from deep_conmech.training_config import TrainingConfig
 
         training_config = TrainingConfig(shell=False)
         training_config.sc = simulation_config
-        checkpoint_path = get_newest_checkpoint_path(training_config)
+        checkpoint_path = get_checkpoint_path(training_config)
         state = GraphModelDynamicJax.load_checkpointed_net(path=checkpoint_path)
 
         if training_config.td.use_dataset_statistics:
@@ -138,6 +139,7 @@ def run_examples(
     config: Config,
     simulate_dirty_data=False,
     save_all=False,
+    additional_args = {}
 ):
     scenes = []
     for i, scenario in enumerate(all_scenarios):
@@ -155,6 +157,7 @@ def run_examples(
                 plot_animation=plot_animation,
             ),
             scene=create_scene(scenario),
+            additional_args=additional_args
         )
         scenes.append(scene)
         print()
@@ -203,6 +206,7 @@ def save_scene(scene: Scene, scenes_path: str, save_animation: bool):
             "normalized_nodes": scene.normalized_initial_nodes
             + scene.norm_lifted_new_displacement,
             "recentered_norm_lifted_new_displacement": scene.recentered_norm_lifted_new_displacement,
+            "reduced_exact_acceleration": scene.reduced.exact_acceleration
         }
 
         pkh.append_data(data=comparer_data, data_path=comparer_data_path, lock=None)
@@ -223,6 +227,7 @@ def run_scenario(
     config: Config,
     run_config: RunScenarioConfig,
     scene: Scene,
+    additional_args = {}
 ) -> Tuple[Scene, str, float]:
     time_skip = config.print_skip
     ts = int(time_skip / scenario.time_step)
@@ -280,6 +285,7 @@ def run_scenario(
             simulate_dirty_data=run_config.simulate_dirty_data,
             config=config,
             operation=operation_save if save_files else None,
+            additional_args=additional_args
         )
 
     # cmh.profile(fun_sim)
@@ -323,7 +329,8 @@ def print_mesh_data(scene):
 def prepare_energy_functions(
     scenario, scene, solve_function, with_temperature, precompile
 ):
-    energy_functions = EnergyFunctions(simulation_config=scene.simulation_config)
+    pca=(scene.simulation_config.mode == "pca")
+    energy_functions = EnergyFunctions(simulation_config=scene.simulation_config, pca=pca)
     reduced_energy_functions = EnergyFunctions(
         simulation_config=scene.simulation_config
     )
@@ -358,6 +365,7 @@ def simulate(
     simulate_dirty_data: bool,
     config: Config,
     operation: Optional[Callable] = None,
+    additional_args={}
 ) -> Tuple[Scene, float]:
     with_temperature = isinstance(scene, SceneTemperature)
 
@@ -371,7 +379,11 @@ def simulate(
     steps = len(time_tqdm)
     timer = Timer()
 
-    for time_step in time_tqdm:
+    if 'reduced_exact_accelerations' in additional_args:
+        assert len(time_tqdm) == len(additional_args['reduced_exact_accelerations'])
+    scene.reduced_exact_accelerations = []
+
+    for step, time_step in enumerate(time_tqdm):
         current_time = (time_step) * scene.time_step
 
         with timer["all_prepare"]:
@@ -384,7 +396,19 @@ def simulate(
                 initial_a=acceleration,
                 initial_t=temperature,
                 timer=timer,
-            )
+            )    
+        if "reduced_exact_accelerations" in additional_args:
+            scene.reduced.exact_acceleration = additional_args['reduced_exact_accelerations'][step]
+        scene.reduced_exact_accelerations.append(scene.reduced.exact_acceleration)
+
+        scene.reorient_and_set_lifted()
+
+        scene.norm_lifted_new_displacement = (
+            scene.get_norm_by_reduced_lifted_new_displacement(scene.lifted_acceleration)
+        )
+        scene.recentered_norm_lifted_new_displacement = scene.recenter_by_current_reduced(
+            new_displacement=scene.norm_lifted_new_displacement
+        )
 
         if simulate_dirty_data:
             scene.make_dirty()

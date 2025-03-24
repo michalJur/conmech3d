@@ -9,8 +9,10 @@ from tqdm import tqdm
 
 from conmech.helpers import cmh, lnh, nph
 from conmech.properties.mesh_properties import MeshProperties
+from conmech.scenarios.scenarios import all_train
 from conmech.scene.scene import Scene
 from conmech.simulations.simulation_runner import create_scene
+from deep_conmech.training_config import get_train_config
 
 
 def get_all_indices(data_path):
@@ -96,7 +98,7 @@ def get_data_scenes(scenes):
 
 def get_data_dataset(dataloader, scene):
     data_list = []
-    count = 3000
+    count = 2000 #3000
     print(f"LIMIT TO {count}")
     for i, sample in enumerate(tqdm(dataloader)):  # check randomness
         target = sample[0][1]
@@ -158,12 +160,11 @@ def p_from_vector(projection, latent):
     return nph.unstack(project_from_latent(projection, latent), dim=3)
 
 
-def run(dataloader, latent_dim, scenario):
+def run(dataloader, latent_dim, scene, scenario):
     if dataloader is None:
         scenes = get_scenes()
         data, sample_u_stack, sample_u = get_data_scenes(scenes)
     else:
-        scene = create_scene(scenario)
         data, sample_u_stack, sample_u = get_data_dataset(
             dataloader=dataloader, scene=scene
         )

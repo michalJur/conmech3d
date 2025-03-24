@@ -73,6 +73,13 @@ class ScenariosDataset(BaseDataset):
         ]
         return assigned_scenarios
 
+    def get_sample_scene(self):
+        assigned_scenarios = self.get_assigned_scenarios(num_workers=1, process_id=0)
+        scenario = assigned_scenarios[0]
+        print("Taking sample scenario, assuming all scenes are the same")
+        scene = self.get_scene(scenario=scenario, config=self.config)
+        return scene
+
     def get_scene(self, scenario: Scenario, config: TrainingConfig) -> Scene:
         scene = SceneInput(
             mesh_prop=scenario.mesh_prop,

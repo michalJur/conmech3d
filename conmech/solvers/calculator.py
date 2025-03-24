@@ -93,7 +93,7 @@ class Calculator:
         # if cmh.get_from_os("JAX_ENABLE_X64"):
         #     assert state.converged
 
-        print("f_k: ", state.f_k, ' k: ', state.k, ' x_k norm: ', jnp.linalg.norm(state.x_k), ' x shape: ', len(state.x_k))
+        # print("f_k: ", state.f_k, ' k: ', state.k, ' x_k norm: ', jnp.linalg.norm(state.x_k), ' x shape: ', len(state.x_k))
         assert not jnp.isnan(state.x_k).any()
 
         if verbose and not state.converged:
@@ -159,55 +159,18 @@ class Calculator:
         #     energy_functions[1] if hasattr(energy_functions, "__len__") else energy_functions
         # )
 
-        # TODO: Important change - not using saved data for comparison, refactor this
-        dense_path = None #cmh.get_base_for_comarison()
-
         with timer["dense_solver"]:
-            if dense_path is None:
-                print("UPDATE")
-                # scene.reduced.exact_acceleration, _ = Calculator.solve(
-                #     scene=scene.reduced,
-                #     energy_functions=energy_functions[1],
-                #     initial_a=scene.reduced.exact_acceleration,
-                #     timer=timer,
-                # )
-                scene.exact_acceleration, _ = Calculator.solve(
-                    scene=scene,
-                    energy_functions=energy_functions[0],
-                    initial_a=scene.exact_acceleration,
-                    timer=timer,
-                )
-                scene.reduced.exact_acceleration = (
-                    scene.lift_acceleration_from_position(scene.exact_acceleration)
-                )
-            else:
-                (
-                    scene.exact_acceleration,
-                    scene.reduced.exact_acceleration,
-                ) = cmh.get_exact_acceleration(scene=scene, path=dense_path)
-
-            scene.reduced.lifted_acceleration = scene.reduced.exact_acceleration
+            scene.reduced.exact_acceleration, _ = Calculator.solve(
+                scene=scene.reduced,
+                energy_functions=energy_functions[1],
+                initial_a=scene.reduced.exact_acceleration,
+                timer=timer,
+            )
 
         with timer["lower_data"]:
-            scene.lifted_acceleration = np.array(
+            scene.exact_acceleration = np.array(
                 scene.lower_acceleration_from_position(
-                    scene.reduced.lifted_acceleration
-                )
-            )
-
-            scene.norm_lifted_new_displacement = (
-                scene.get_norm_by_reduced_lifted_new_displacement(
-                    scene.lifted_acceleration
-                )
-            )
-            scene.recentered_norm_lifted_new_displacement = scene.recenter_by_reduced(
-                new_displacement=scene.norm_lifted_new_displacement,
-                reduced_exact_acceleration=scene.reduced.exact_acceleration,
-            )
-
-            norm_exact_new_displacement = (
-                scene.get_norm_by_reduced_lifted_new_displacement(
-                    scene.exact_acceleration
+                    scene.reduced.exact_acceleration
                 )
             )
 
@@ -224,60 +187,26 @@ class Calculator:
         initial_t=None,
         timer=Timer(),
     ):
-        return Calculator.solve_skinning_backwards_base(
-            scene=scene,
-            energy_functions=energy_functions,
-            initial_a=initial_a,
-            initial_t=initial_t,
-            timer=timer,
-            with_base_for_comparison=False,
-        )
-
-    @staticmethod
-    def solve_skinning_backwards_base(
-        scene: Scene,
-        energy_functions: EnergyFunctions,
-        initial_a,
-        initial_t=None,
-        timer=Timer(),
-        with_base_for_comparison=True,
-    ):
         _ = initial_a, initial_t
-        energy_functions = (
+        energy_function = (
             energy_functions[0]
             if hasattr(energy_functions, "__len__")
             else energy_functions
         )
 
         with timer["reduced_solver"]:
-            scene.lifted_acceleration, _ = Calculator.solve(
+            scene.exact_acceleration, _ = Calculator.solve(
                 scene=scene,
-                energy_functions=energy_functions,
+                energy_functions=energy_function,
                 initial_a=scene.exact_acceleration,
                 timer=timer,
             )
-            if False: #with_base_for_comparison:
-                dense_path = cmh.get_base_for_comarison()
-                exact_acceleration, _ = cmh.get_exact_acceleration(
-                    scene=scene, path=dense_path
-                )
-            else:
-                exact_acceleration = scene.lifted_acceleration
         with timer["lift_data"]:
             scene.reduced.exact_acceleration = scene.lift_acceleration_from_position(
-                exact_acceleration
+                scene.exact_acceleration
             )
-            scene.reduced.lifted_acceleration = scene.reduced.exact_acceleration
 
-        scene.norm_lifted_new_displacement = (
-            scene.get_norm_by_reduced_lifted_new_displacement(scene.lifted_acceleration)
-        )
-        scene.recentered_norm_lifted_new_displacement = scene.recenter_by_reduced(
-            new_displacement=scene.norm_lifted_new_displacement,
-            reduced_exact_acceleration=scene.reduced.exact_acceleration,
-        )
-
-        return np.array(exact_acceleration), None
+        return scene.exact_acceleration, None
 
     @staticmethod
     def solve_compare_reduced(
@@ -285,23 +214,19 @@ class Calculator:
         energy_functions: EnergyFunctions,
         initial_a,
         initial_t,
-        timer=Timer(),
-        reorient_to_reduced=False,
+        timer=Timer()
     ):
+        
+        scene.exact_acceleration, initial_t = Calculator.solve(
+            scene=scene, energy_functions=energy_functions[0], initial_a=initial_a
+        )
         scene.reduced.exact_acceleration, _ = Calculator.solve(
             scene=scene.reduced,
-            energy_functions=energy_functions[0],
+            energy_functions=energy_functions[1],
             initial_a=scene.reduced.exact_acceleration,
             timer=timer,
         )
-        scene.reduced.lifted_acceleration = scene.reduced.exact_acceleration
-
-        exact_acceleration, initial_t = Calculator.solve(
-            scene=scene, energy_functions=energy_functions[1], initial_a=initial_a
-        )
-        if reorient_to_reduced:
-            exact_acceleration = scene.reorient_to_reduced(exact_acceleration)
-        return exact_acceleration, initial_t
+        return scene.exact_acceleration, initial_t
 
     @staticmethod
     def solve_temperature_normalized_function(
@@ -497,7 +422,7 @@ class Calculator:
         )
 
         with timer["__minimize_jax"]:
-            if not scene.simulation_config.mode == "pca":
+            if not hasattr(scene, "reduced") or not scene.simulation_config.mode == "pca":
                 minimize_fun = Calculator.minimize_jax
             else:
                 minimize_fun = Calculator.minimize_jax_displacement_pca

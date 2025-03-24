@@ -1,6 +1,10 @@
 import copy
+from datetime import datetime
+import json
 import os
 from ctypes import ArgumentError
+from pathlib import Path
+import pickle
 from typing import Callable, Iterable
 
 import numpy as np
@@ -11,6 +15,7 @@ from torch_geometric.loader import DataLoader
 
 from conmech.helpers import cmh, mph, pkh
 from conmech.plotting.plotter_functions import plot_setting
+from conmech.solvers.calculator import Calculator
 from deep_conmech.data.data_classes import GraphData
 from deep_conmech.data.dataset_statistics import (
     FeaturesStatistics,
@@ -133,7 +138,8 @@ class BaseDataset:
         self.device_count = device_count
         self.item_fn = item_fn
         self.statistics = None
-
+        self.statistics_path = Path(self.main_directory) / 'STATISTICS.pkl'
+        
     @property
     def data_size_id(self):
         pass
@@ -193,6 +199,9 @@ class BaseDataset:
             )
             return
 
+        self.recreate_data()
+
+    def recreate_data(self):
         self.unload_and_clear_indices()
         if not self.with_scenes_file:
             print("Skipping scenes file generation")
@@ -300,6 +309,35 @@ class BaseDataset:
         return True
 
     def get_statistics(self):
+        statistics = self._load_statistics()
+        if statistics is None:
+            print("Calculating statistics")
+            statistics = self._calculate_statistics()
+            self._save_statistics(statistics)
+        else:
+            print("Using loaded statistics")
+        return statistics
+
+    def _save_statistics(self, statistics):
+        data = {
+            'data_count': self.data_count,
+            'timestamp': datetime.now().isoformat(),
+            'statistics': statistics
+        }
+        with open(self.statistics_path, 'wb') as f:
+            pickle.dump(data, f)
+            
+    def _load_statistics(self):
+        if not self.statistics_path.exists():
+            return None
+        with open(self.statistics_path, 'rb') as f:
+            data = pickle.load(f)
+            assert data['data_count'] == self.data_count
+            return data['statistics']
+       
+
+
+    def _calculate_statistics(self):
         saved_device_count = self.device_count
         self.device_count = 1
 
@@ -533,6 +571,14 @@ class BaseDataset:
         # scene.exact_acceleration = scene.lower_acceleration_from_position(
         #     scene.reduced.exact_acceleration
         # )
+
+        scene.exact_acceleration, _ = Calculator.solve_compare_reduced(scene=scene,
+            energy_functions=[reduced_energy_functions, energy_functions],
+            initial_a=scene.exact_acceleration,
+            initial_t=None)
+    
+        scene.reorient_and_set_lifted()
+        return scene, scene.exact_acceleration
 
         dense_path = None  # cmh.get_base_for_comarison()
         if dense_path is not None:
