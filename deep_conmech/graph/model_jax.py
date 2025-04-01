@@ -517,9 +517,9 @@ def solve(
         scene.norm_lifted_new_displacement = apply_net(args) / SCALE
 
     with timer["jax_translation"]:
-
-        scene.recentered_norm_lifted_new_displacement = scene.recenter_by_current_reduced(
-            new_displacement=scene.norm_lifted_new_displacement
+        print('Using recenter_by_new_reduced')
+        scene.recentered_norm_lifted_new_displacement = scene.recenter_by_new_reduced(
+            new_displacement=scene.norm_lifted_new_displacement, reduced_exact_acceleration=scene.reduced.exact_acceleration
         )
 
         scene.exact_acceleration = np.array(

@@ -42,7 +42,7 @@ def save_three(scene, step, folder, skip=1):
         nodes_reduced, boundary_edges_reduced = [], []
 
     normalized_nodes = (
-        scene.initial_nodes + scene.norm_by_reduced_lifted_new_displacement
+        scene.initial_nodes + scene.new_displacement_norm_by_reduced_new_displacement
     )[scene.boundary_indices]
     highlighted_nodes_list = [
         convert_to_list(nodes[scene.self_collisions_mask]),
@@ -54,7 +54,7 @@ def save_three(scene, step, folder, skip=1):
     if hasattr(scene, "reduced"):
         normalized_nodes_reduced = (
             scene.reduced.initial_nodes
-            + scene.reduced.norm_by_reduced_lifted_new_displacement  ##3 TODO: reduced has no reduced
+            + scene.reduced.new_displacement_norm_by_itself
         )[scene.reduced.boundary_indices]
         nodes_reduced_list = [
             convert_to_list(nodes_reduced),

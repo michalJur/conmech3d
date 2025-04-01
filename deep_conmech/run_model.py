@@ -287,12 +287,10 @@ def get_newest_checkpoint_path_jax(config: TrainingConfig):
 
 
 def get_checkpoint_path(config: TrainingConfig=None):
+    return '/home/mjureczka/Desktop/conmech3d/output/25.02.23-15.49.20 - JAX GRAPH MODELS/17415794015227 - EPOCH 100 - MODEL'
+    return '/home/mjureczka/Desktop/conmech3d/output/25.02.23-15.49.20 - JAX GRAPH MODELS/17429725114145 - EPOCH 215 - MODEL'
+    ###
     return '/home/mjureczka/Desktop/conmech3d/output/25.02.15-00.31.13 - JAX GRAPH MODELS/17397701977692 - EPOCH 16 - MODEL'
-    # return '/home/mjureczka/Desktop/conmech3d/output/25.02.11-13.23.34 - JAX GRAPH MODELS/17393259936453 - EPOCH 3 - MODEL'
-    # return '/home/mjureczka/Desktop/conmech3d/output/25.02.11-13.23.34 - JAX GRAPH MODELS/17392897048005 - EPOCH 0 - MODEL'
-    return '/home/mjureczka/Desktop/conmech3d/output/25.02.11-13.23.34 - JAX GRAPH MODELS/17393623753086 - EPOCH 6 - MODEL'
-    return '/home/mjureczka/Desktop/conmech3d/output/25.02.09-11.09.37 - JAX GRAPH MODELS/17391068243554 - MODEL'
-    return '/home/mjureczka/Desktop/conmech3d/output/25.02.09-11.09.37 - JAX GRAPH MODELS/17391673993210 - MODEL'
     #return get_newest_checkpoint_path_jax(config)
 
 

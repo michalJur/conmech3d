@@ -84,8 +84,9 @@ class SceneInput(SceneRandomized):
                 return jnp.hstack(
                     (
                         get_column(scene.input_initial_nodes),  # cached
-                        get_column(scene.input_displacement_old),
-                        get_column(scene.input_velocity_old),
+                        get_column(scene.new_displacement_norm_by_itself) #NEW
+                        # get_column(scene.input_displacement_old),
+                        # get_column(scene.input_velocity_old),
                         # get_column(scene.input_forces),
                     )
                 )
@@ -157,7 +158,7 @@ class SceneInput(SceneRandomized):
             # input_forces = prepare_nodes(scene.input_forces)
             if reduced:
                 new_displacement = prepare_nodes(
-                    self.reduced.norm_by_reduced_lifted_new_displacement
+                    self.reduced.new_displacement_norm_by_itself
                 )
                 # new_displacement = prepare_nodes(
                 #     scene.to_normalized_displacement_rotated_displaced(scene.lifted_acceleration)
@@ -280,7 +281,7 @@ class SceneInput(SceneRandomized):
         # ) # rotate and lower
 
         target_data.normalized_new_displacement = thh.to_double(
-            self.norm_by_reduced_lifted_new_displacement
+            self.new_displacement_norm_by_reduced_new_displacement
         )  # lower and rotate
 
         # target_data.new_displacement = thh.to_double(self.get_lifted_displacement())

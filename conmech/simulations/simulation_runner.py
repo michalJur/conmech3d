@@ -199,12 +199,12 @@ def save_scene(scene: Scene, scenes_path: str, save_animation: bool):
             "norm_new_displacement": scene.to_normalized_displacement(
                 scene.lifted_acceleration
             ),
-            "norm_reduced": scene.norm_by_reduced_lifted_new_displacement,
+            "norm_reduced": scene.new_displacement_norm_by_reduced_new_displacement,
             "normalized_by_reduces_nodes": scene.normalized_initial_nodes
-            + scene.norm_by_reduced_lifted_new_displacement,
-            "norm_lifted_new_displacement": scene.norm_lifted_new_displacement,
-            "normalized_nodes": scene.normalized_initial_nodes
-            + scene.norm_lifted_new_displacement,
+            + scene.new_displacement_norm_by_reduced_new_displacement,
+            # "norm_lifted_new_displacement": scene.norm_lifted_new_displacement,
+            # "normalized_nodes": scene.normalized_initial_nodes
+            # + scene.norm_lifted_new_displacement,
             "recentered_norm_lifted_new_displacement": scene.recentered_norm_lifted_new_displacement,
             "reduced_exact_acceleration": scene.reduced.exact_acceleration
         }
@@ -403,12 +403,12 @@ def simulate(
 
         scene.reorient_and_set_lifted()
 
-        scene.norm_lifted_new_displacement = (
-            scene.get_norm_by_reduced_lifted_new_displacement(scene.lifted_acceleration)
-        )
-        scene.recentered_norm_lifted_new_displacement = scene.recenter_by_current_reduced(
-            new_displacement=scene.norm_lifted_new_displacement
-        )
+        # scene.norm_lifted_new_displacement = (
+        #     scene.get_norm_by_reduced_lifted_new_displacement(scene.lifted_acceleration)
+        # )
+        # scene.recentered_norm_lifted_new_displacement = scene.recenter_by_current_reduced(
+        #     new_displacement=scene.norm_lifted_new_displacement
+        # )
 
         if simulate_dirty_data:
             scene.make_dirty()

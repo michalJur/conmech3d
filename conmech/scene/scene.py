@@ -342,6 +342,41 @@ class Scene(BodyForces):
     def normalized_lifted_acceleration(self):
         return self.normalize_rotate(self.lifted_acceleration)
 
+####################
+
+    @property
+    @mesh_normalization_decorator
+    def new_displacement_norm_by_reduced_new_displacement(self):
+        assert hasattr(self, "reduced")
+    
+        displacement_new = self.to_displacement(self.exact_acceleration)
+        moved_nodes_new = self.initial_nodes + displacement_new
+        
+        reduced_displacement_new = self.reduced.to_displacement(self.reduced.exact_acceleration)
+        reduced_moved_nodes_new = self.reduced.initial_nodes + reduced_displacement_new
+
+        new_normalized_nodes = lnh.get_in_base2(
+            (moved_nodes_new - np.mean(reduced_moved_nodes_new, axis=0)),
+            self.reduced.get_rotation(reduced_displacement_new).T,
+        )
+
+        return new_normalized_nodes - self.normalized_initial_nodes
+    
+    @property
+    @mesh_normalization_decorator
+    def new_displacement_norm_by_itself(self):
+        displacement_new = self.to_displacement(self.exact_acceleration)
+        moved_nodes_new = self.initial_nodes + displacement_new
+
+        new_normalized_nodes = lnh.get_in_base2(
+            (moved_nodes_new - np.mean(moved_nodes_new, axis=0)),
+            self.get_rotation(displacement_new).T,
+        )
+
+        return new_normalized_nodes - self.normalized_initial_nodes
+
+######################
+
     @property
     @mesh_normalization_decorator
     def norm_by_reduced_lifted_new_displacement(self):
@@ -349,11 +384,15 @@ class Scene(BodyForces):
 
     @mesh_normalization_decorator
     def get_norm_by_reduced_lifted_new_displacement(self, exact_acceleration):
+        raise Exception('get_norm_by_reduced_lifted_new_displacement is depreciated!')
         def _normalize_current_reduced(moved_nodes):
             if hasattr(self, "reduced"):
                 base_scene = self.reduced
             else:
+                print("WARNING! no reduced scene in get_norm_by_reduced_lifted_new_displacement")
                 base_scene = self  # TODO: Add warning
+
+
             return lnh.get_in_base2(
                 (moved_nodes - np.mean(base_scene.moved_nodes, axis=0)),
                 base_scene.get_rotation(base_scene.displacement_old).T,

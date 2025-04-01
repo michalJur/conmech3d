@@ -112,7 +112,7 @@ def _get_constant_boundary_integral(
     )
     resistance_normal = args.boundary_normals * resistance_normal_scalar
 
-    resistance_normal_self = _obstacle_resistance_potential_normal(
+    resistance_normal_self = _obstacle_resistance_potential_normal( # DO WE WANT POTENTIAL?
         penetration_norm=penetration_norm_self,
         hardness=SELF_COLLISION_SCALAR * args.obstacle_prop.hardness,
         time_step=args.time_step,
@@ -194,7 +194,7 @@ def _get_boundary_integral(
             hardness=SELF_COLLISION_SCALAR * args.obstacle_prop.hardness,
             time_step=args.time_step,
         )
-        boundary_values += 0.0 * resistance_normal_self
+        boundary_values += 0.0 * resistance_normal_self # WE DON'T HAVE SELF COLLISIONS (?)
     boundary_integral = (args.surface_per_boundary_node * boundary_values).sum()
     return boundary_integral
 
