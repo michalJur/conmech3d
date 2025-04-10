@@ -3,6 +3,7 @@ conmech helpers
 """
 import cProfile
 import os
+from pathlib import Path
 import pickle
 import shutil
 import sys
@@ -50,13 +51,15 @@ def create_folder(path):
     if not os.path.exists(path):
         os.mkdir(path)
 
+def get_directory(path):
+    path_obj = Path(path)
+    return path_obj if not path_obj.suffix else path_obj.parent
 
 def create_folders(path):
-    all_folders = path.split("/")
-    final_path = ""
-    for folder in all_folders:
-        final_path += f"{folder}/"
-        create_folder(final_path)
+    directory = get_directory(path)
+    if not directory or os.path.exists(directory):
+        return
+    os.makedirs(directory, exist_ok=True)
 
 
 def get_all_contents(directory):

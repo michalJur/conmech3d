@@ -17,7 +17,7 @@ from conmech.scenarios.scenarios import (
     M_TWIST_3D,
     Scenario,
     all_train,
-    bunny_fall_3d,
+    bunny_fall,
     bunny_obstacles,
     bunny_rotate_3d,
     default_body_prop,

@@ -23,7 +23,7 @@ import torch.multiprocessing
 from conmech.helpers import cmh, pca
 from conmech.helpers.config import Config, SimulationConfig
 from conmech.scenarios import scenarios
-from conmech.scenarios.scenarios import bunny_fall_3d
+from conmech.scenarios.scenarios import bunny_fall
 from conmech.simulations import simulation_runner
 from conmech.solvers.calculator import Calculator
 from deep_conmech.data import base_dataset
@@ -286,12 +286,18 @@ def get_newest_checkpoint_path_jax(config: TrainingConfig):
     return path
 
 
+
 def get_checkpoint_path(config: TrainingConfig=None):
-    return '/home/mjureczka/Desktop/conmech3d/output/25.02.23-15.49.20 - JAX GRAPH MODELS/17415794015227 - EPOCH 100 - MODEL'
-    return '/home/mjureczka/Desktop/conmech3d/output/25.02.23-15.49.20 - JAX GRAPH MODELS/17429725114145 - EPOCH 215 - MODEL'
+    return '/home/michal/Desktop/conmech3d/output/25.03.29-14.23.40 - JAX GRAPH MODELS/17433991184666 - EPOCH 8 - MODEL'
+    return '/home/michal/Desktop/conmech3d/output/25.03.29-14.23.40 - JAX GRAPH MODELS/17434958282739 - EPOCH 16 - MODEL'
+    return '/home/michal/Desktop/conmech3d/output/25.03.29-14.23.40 - JAX GRAPH MODELS/17435684218629 - EPOCH 22 - MODEL'
     ###
-    return '/home/mjureczka/Desktop/conmech3d/output/25.02.15-00.31.13 - JAX GRAPH MODELS/17397701977692 - EPOCH 16 - MODEL'
+    # return '/home/michal/Desktop/conmech3d/output/25.03.29-14.23.40 - JAX GRAPH MODELS/17436651484198 - EPOCH 30 - MODEL'
+    # return '/home/michal/Desktop/conmech3d/output/25.03.29-14.23.40 - JAX GRAPH MODELS/17436530512429 - EPOCH 29 - MODEL'
+    # return '/home/michal/Desktop/conmech3d/output/25.03.29-14.23.40 - JAX GRAPH MODELS/17435805068139 - EPOCH 23 - MODEL'
+    # return '/home/michal/Desktop/conmech3d/output/25.03.29-14.23.40 - JAX GRAPH MODELS/17435684218629 - EPOCH 22 - MODEL'
     #return get_newest_checkpoint_path_jax(config)
+
 
 
 def main(args: Namespace):

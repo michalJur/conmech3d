@@ -641,20 +641,21 @@ def cube_move_3d(
     )
 
 
-def bunny_fall_3d(
+def bunny_fall(
     mesh_density: int,
-    scale: int,
     final_time: float,
     simulation_config: SimulationConfig,
+    scale=1,
     tag="",
     arg=0.7,
     scale_forces=1.0,
+    name="bunny_fall"
 ):
     _ = tag
     _ = scale
     _ = mesh_density
     return Scenario(
-        name="bunny_fall",
+        name=name,
         mesh_prop=MeshProperties(
             dimension=3,
             mesh_type=M_BUNNY_3D,
@@ -670,6 +671,68 @@ def bunny_fall_3d(
         ),
         simulation_config=simulation_config,
     )
+
+
+
+def bunny_push_3d_old( # TODO
+    mesh_density: int,
+    scale: int,
+    final_time: float,
+    simulation_config: SimulationConfig,
+    tag="",
+    scale_forces=1.0,
+):
+    _ = tag
+    _ = scale
+    _ = mesh_density
+    return Scenario(
+        name="bunny_push",
+        mesh_prop=MeshProperties(
+            dimension=3,
+            mesh_type=M_BUNNY_3D,
+            scale=[1],
+            mesh_density=[mesh_density],
+        ),
+        body_prop=default_body_prop_3d,
+        schedule=Schedule(final_time=final_time),
+        forces_function=scale_forces * np.array([0.0, -0.5, -1.0]),
+        obstacle=Obstacle(  # 0.3
+            np.array([[[0.0, 0.0, 1.0]], [[0.0, 0.0, -0.5]]]),
+            ObstacleProperties(hardness=100.0, friction=2.0),  # friction=5.0
+        ),
+        simulation_config=simulation_config,
+    )
+
+def bunny_push( # TODO
+    mesh_density: int,
+    final_time: float,
+    simulation_config: SimulationConfig,
+    scale=1,
+    tag="",
+    scale_forces=1.0,
+    name="bunny_push",
+):
+    _ = tag
+    _ = scale
+    _ = mesh_density
+    return Scenario(
+        name=name,
+        mesh_prop=MeshProperties(
+            dimension=3,
+            mesh_type=M_BUNNY_3D,
+            scale=[1],
+            mesh_density=[mesh_density],
+        ),
+        body_prop=default_body_prop_3d,
+        schedule=Schedule(final_time=final_time),
+        forces_function=scale_forces * np.array([0.0, -1.0, -0.5]),
+        obstacle=Obstacle(  # 0.3
+            np.array([[[0.0, 0.0, 1.0]], [[0.0, 0.0, -0.4]]]),
+            ObstacleProperties(hardness=100.0, friction=2.0),  # friction=5.0
+        ),
+        simulation_config=simulation_config,
+    )
+
 
 
 def bunny_rotate_3d(
@@ -728,12 +791,13 @@ def bunny_swing_3d(
 
 def bunny_obstacles(
     mesh_density: int,
-    scale: int,
     final_time: float,
     simulation_config: SimulationConfig,
+    scale=1,
     tag="",
     arg=1.0,
     scale_forces=1.0,
+    name="bunny_obstacles",
 ):
     _, _, _ = scale, tag, arg
     obstacle_meshes = []
@@ -755,7 +819,7 @@ def bunny_obstacles(
         )
 
     return Scenario(
-        name="bunny_obstacles",
+        name=name,
         mesh_prop=MeshProperties(
             dimension=3,
             mesh_type=M_BUNNY_3D,
@@ -886,9 +950,8 @@ def all_validation(td, sc):
     if td.dimension == 3:
         return [
             [
-                bunny_fall_3d(
+                bunny_fall(
                     mesh_density=td.mesh_density,
-                    scale=1,
                     final_time=2.0,
                     simulation_config=sc,
                     scale_forces=5.0,
@@ -926,20 +989,51 @@ def all_validation(td, sc):
 
 
 def all_compare(td, sc):
+    final_time = 4.0
     return [
-                # bunny_fall_3d(
-                #     mesh_density=td.mesh_density,
-                #     scale=1,
-                #     final_time=2.0,
-                #     simulation_config=sc,
-                #     scale_forces=5.0,
-                # )
                 bunny_obstacles(
                     mesh_density=td.mesh_density,
-                    scale=1,
-                    final_time=4.0,
+                    final_time=final_time,
                     simulation_config=sc,
                     scale_forces=5.0,
+                    name="bunny_obstacles_f5",
+                ),
+                bunny_obstacles(
+                    mesh_density=td.mesh_density,
+                    final_time=final_time,
+                    simulation_config=sc,
+                    scale_forces=2.0,
+                    name="bunny_obstacles_f2",
+                ),
+                ###
+                bunny_fall(
+                    mesh_density=td.mesh_density,
+                    final_time=final_time,
+                    simulation_config=sc,
+                    scale_forces=5.0,
+                    name="bunny_fall_f5",
+                ),
+                bunny_fall(
+                    mesh_density=td.mesh_density,
+                    final_time=final_time,
+                    simulation_config=sc,
+                    scale_forces=2.0,
+                    name="bunny_fall_f2",
+                ),
+                ###
+                bunny_push(
+                    mesh_density=td.mesh_density,
+                    final_time=final_time,
+                    simulation_config=sc,
+                    scale_forces=5.0,
+                    name="bunny_push_f5",
+                ),
+                bunny_push(
+                    mesh_density=td.mesh_density,
+                    final_time=final_time,
+                    simulation_config=sc,
+                    scale_forces=2.0,
+                    name="bunny_push_f2",
                 )
             ]
     
@@ -950,7 +1044,7 @@ def all_print(td, sc):
         args["final_time"] = 10.0  # 12.0
         return [
             # bunny_obstacles(**args),
-            bunny_fall_3d(**args),
+            bunny_fall(**args),
             bunny_rotate_3d(**args),
             bunny_swing_3d(**args),
             # ball_rotate_3d(**args),

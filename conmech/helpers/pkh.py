@@ -6,6 +6,8 @@ from io import BufferedReader
 from threading import Lock
 from typing import Optional
 
+from conmech.helpers import cmh
+
 
 def open_files_write(path: str):
     return open(path, "wb+"), open(f"{path}_indices", "wb+")
@@ -35,6 +37,7 @@ def get_all_indices(data_path):
 
 def append_data(data, data_path: str, lock: Optional[Lock]) -> None:
     def append_data_internal():
+        cmh.create_folders(data_path)
         data_file, indices_file = open_files_append(data_path)
         with data_file, indices_file:
             index = data_file.tell()

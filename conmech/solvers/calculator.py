@@ -147,7 +147,7 @@ class Calculator:
         return np.asarray(a_projected_vector)
 
     @staticmethod
-    def solve_skinning(
+    def solve_skinning( ###
         scene: Scene,
         energy_functions: EnergyFunctions,
         initial_a,
@@ -159,13 +159,16 @@ class Calculator:
         #     energy_functions[1] if hasattr(energy_functions, "__len__") else energy_functions
         # )
 
-        with timer["dense_solver"]:
-            scene.reduced.exact_acceleration, _ = Calculator.solve(
-                scene=scene.reduced,
-                energy_functions=energy_functions[1],
-                initial_a=scene.reduced.exact_acceleration,
-                timer=timer,
-            )
+        if scene.reduced.exact_acceleration is None:
+            with timer["dense_solver"]:
+                scene.reduced.exact_acceleration, _ = Calculator.solve(
+                    scene=scene.reduced,
+                    energy_functions=energy_functions[1],
+                    initial_a=scene.reduced.exact_acceleration,
+                    timer=timer,
+                )
+        else:
+            print("Taking prepared reduced acceleration")
 
         with timer["lower_data"]:
             scene.exact_acceleration = np.array(
@@ -209,22 +212,15 @@ class Calculator:
         return scene.exact_acceleration, None
 
     @staticmethod
-    def solve_compare_reduced(
+    def solve_compare_reduced( ###
         scene: Scene,
         energy_functions: EnergyFunctions,
         initial_a,
         initial_t,
         timer=Timer()
     ):
-        
         scene.exact_acceleration, initial_t = Calculator.solve(
             scene=scene, energy_functions=energy_functions[0], initial_a=initial_a
-        )
-        scene.reduced.exact_acceleration, _ = Calculator.solve(
-            scene=scene.reduced,
-            energy_functions=energy_functions[1],
-            initial_a=scene.reduced.exact_acceleration,
-            timer=timer,
         )
         return scene.exact_acceleration, initial_t
 

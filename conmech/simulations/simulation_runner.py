@@ -18,13 +18,13 @@ from conmech.solvers.calculator import Calculator
 
 
 def get_solve_function(simulation_config):
-    if simulation_config.mode == "normal":
+    if simulation_config.mode in ["normal", 'normal_with_reduced', 'pca']:
         return Calculator.solve
-    if simulation_config.mode == "pca":
-        return Calculator.solve_compare_reduced
+    # if simulation_config.mode == "pca":
+        # return Calculator.solve_compare_reduced
         # return Calculator.solve_skinning_backwards
-    if simulation_config.mode == "compare_reduced":
-        return Calculator.solve_compare_reduced
+    # if simulation_config.mode == "compare_reduced":
+        # return Calculator.solve_compare_reduced
     if simulation_config.mode == "skinning":
         return Calculator.solve_skinning
     if simulation_config.mode == "skinning_backwards":
@@ -89,7 +89,7 @@ def create_scene(scenario):
         elif scenario.simulation_config.mode in [
             "net",
             "compare_net",
-            "compare_reduced",
+            "normal_with_reduced",
         ]:
             from deep_conmech.scene.scene_input import SceneInput
 
@@ -139,14 +139,15 @@ def run_examples(
     config: Config,
     simulate_dirty_data=False,
     save_all=False,
-    additional_args = {}
+    additional_args = {},
 ):
     scenes = []
+    final_catalogs = []
     for i, scenario in enumerate(all_scenarios):
         print(f"-----EXAMPLE {i + 1}/{len(all_scenarios)}-----")
         catalog = os.path.splitext(os.path.basename(file))[0].upper()
 
-        scene, _ = run_scenario(
+        scene, final_catalog = run_scenario(
             solve_function=get_solve_function(scenario.simulation_config),
             scenario=scenario,
             config=config,
@@ -160,10 +161,10 @@ def run_examples(
             additional_args=additional_args
         )
         scenes.append(scene)
+        final_catalogs.append(final_catalog)
         print()
     print("DONE")
-    return scenes
-
+    return scenes, final_catalogs
 
 @dataclass
 class RunScenarioConfig:
@@ -173,9 +174,10 @@ class RunScenarioConfig:
     save_all: bool = False
 
 
-def save_scene(scene: Scene, scenes_path: str, save_animation: bool):
+def save_scene(scene: Scene, final_catalog: str, save_animation: bool):
     # Blender
-    blender_data_path = scenes_path + "_blender"
+    blender_data_path = f"{final_catalog}/blender/data.blender"
+    
     blender_data = (scene.boundary_nodes, scene.boundaries.boundary_surfaces)
     if isinstance(scene, SceneTemperature):
         blender_data += (scene.t_old,)
@@ -190,22 +192,23 @@ def save_scene(scene: Scene, scenes_path: str, save_animation: bool):
 
     # Comparer
     if hasattr(scene, "reduced"):
-        comparer_data_path = scenes_path + "_comparer"
+        comparer_data_path = f"{final_catalog}/scenes/data.scene"
 
         comparer_data = {
             "exact_acceleration": scene.exact_acceleration,
-            "lifted_acceleration": scene.lifted_acceleration,
-            "lifted_displacement": scene.get_lifted_displacement(),
-            "norm_new_displacement": scene.to_normalized_displacement(
-                scene.lifted_acceleration
-            ),
-            "norm_reduced": scene.new_displacement_norm_by_reduced_new_displacement,
-            "normalized_by_reduces_nodes": scene.normalized_initial_nodes
-            + scene.new_displacement_norm_by_reduced_new_displacement,
-            # "norm_lifted_new_displacement": scene.norm_lifted_new_displacement,
-            # "normalized_nodes": scene.normalized_initial_nodes
-            # + scene.norm_lifted_new_displacement,
-            "recentered_norm_lifted_new_displacement": scene.recentered_norm_lifted_new_displacement,
+            # "lifted_acceleration": scene.lifted_acceleration,
+            # "lifted_acceleration": scene.lifted_acceleration,
+            "displacement_old": scene.displacement_old,
+            # "norm_new_displacement": scene.to_normalized_displacement(
+            #     scene.lifted_acceleration
+            # ),
+            # "norm_reduced": scene.new_displacement_norm_by_reduced_new_displacement,
+            # "normalized_by_reduces_nodes": scene.normalized_initial_nodes
+            # + scene.new_displacement_norm_by_reduced_new_displacement,
+            # # "norm_lifted_new_displacement": scene.norm_lifted_new_displacement,
+            # # "normalized_nodes": scene.normalized_initial_nodes
+            # # + scene.norm_lifted_new_displacement,
+            # "recentered_norm_lifted_new_displacement": scene.recentered_norm_lifted_new_displacement,
             "reduced_exact_acceleration": scene.reduced.exact_acceleration
         }
 
@@ -218,7 +221,7 @@ def save_scene(scene: Scene, scenes_path: str, save_animation: bool):
         scene_copy = copy.copy(scene)
         scene_copy.prepare_to_save()
 
-        pkh.append_data(data=scene_copy, data_path=scenes_path, lock=None)
+        pkh.append_data(data=scene_copy, data_path=f"{final_catalog}/matplotlib/data.matplotlib", lock=None)
 
 
 def run_scenario(
@@ -237,22 +240,14 @@ def run_scenario(
     save_animation = run_config.plot_animation
 
     # if save_files:
-    final_catalog = (
-        f"{config.output_catalog}/{config.current_time} - {run_config.catalog}"
-    )
-    cmh.create_folders(f"{final_catalog}/scenarios")
-    #     if with_reduced:
-    cmh.create_folders(f"{final_catalog}/scenarios_reduced")
-    #     scenes_path = f"{final_catalog}/scenarios/{scenario.name}_DATA.scenes"
-    #     scenes_path_reduced = f"{final_catalog}/scenarios_reduced/{scenario.name}_DATA.scenes"
-    # else:
-    #     final_catalog = ""
-    #     scenes_path = ""
-    #     scenes_path_reduced = ""
-    label = f"{scenario.name}_{scene.simulation_config.mode}_{scene.mesh_prop.mesh_type}"  # {start_time}_
-    scenes_path = f"{final_catalog}/scenarios/{label}_DATA.scenes"
-    scenes_path_reduced = f"{final_catalog}/scenarios_reduced/{label}_DATA.scenes"
+    if 'main_dir' in additional_args:
+        main_dir = additional_args['main_dir']
+    else:
+        main_dir = f"{config.output_catalog}/{config.current_time} - {run_config.catalog}"
 
+    final_catalog = f"{main_dir}/{scenario.name}/{scene.simulation_config.mode}"
+    # _{scene.mesh_prop.mesh_type}
+    
     step = [0]  # TODO: #65 Clean
 
     def operation_save(scene: Scene):
@@ -261,13 +256,16 @@ def run_scenario(
         plot_index = step[0] % ts == 0
         if "three" in config.animation_backend:
             plotter_functions.save_three(
-                scene=scene, step=step[0], folder=f"{final_catalog}/three/{label}"
+                scene=scene, step=step[0], folder=f"{final_catalog}/three"
             )
         if run_config.save_all or plot_index:
+            # scenes_path_reduced = f"{final_catalog}/scenarios_reduced/{label}.scenes"
+
             save_scene(
-                scene=scene, scenes_path=scenes_path, save_animation=save_animation
+                scene=scene, final_catalog=final_catalog, save_animation=save_animation
             )
             # if with_reduced:
+            #     cmh.create_folders(f"{final_catalog}/scenarios_reduced")
             #     save_scene(
             #         scene=scene.reduced,
             #         scenes_path=scenes_path_reduced,
@@ -302,10 +300,10 @@ def run_scenario(
                 time_skip=time_skip,
                 index_skip=ts if run_config.save_all else 1,
                 plot_scenes_count=plot_scenes_count[0],
-                all_scenes_path=scenes_path,
+                all_scenes_path=final_catalog, ###
             )
 
-    return scene, scenes_path
+    return scene, final_catalog
 
 
 def prepare(scenario, scene: Scene, current_time, with_temperature):
@@ -377,7 +375,7 @@ def simulate(
     acceleration, temperature = (None,) * 2
     time_tqdm = scenario.get_tqdm(desc="Simulating", config=config)
     steps = len(time_tqdm)
-    timer = Timer()
+    timer = additional_args['timer'] if 'timer' in additional_args else Timer()
 
     if 'reduced_exact_accelerations' in additional_args:
         assert len(time_tqdm) == len(additional_args['reduced_exact_accelerations'])
@@ -389,16 +387,28 @@ def simulate(
         with timer["all_prepare"]:
             prepare(scenario, scene, current_time, with_temperature)
 
-        with timer["all_solver"]:
+
+        with timer["reduced_solver"]:
+            if "reduced_exact_accelerations" in additional_args:
+                print('Taking reduced acceleration')
+                scene.reduced.exact_acceleration = additional_args['reduced_exact_accelerations'][step]
+            else:
+                print('Calculating reduced acceleration')
+                scene.reduced.exact_acceleration, _ = Calculator.solve(
+                    scene=scene.reduced,
+                    energy_functions=energy_functions[1],
+                    initial_a=scene.reduced.exact_acceleration,
+                    # timer=timer,
+                )
+
+        with timer["solver"]:
             scene.exact_acceleration, temperature = solve_function(
                 scene=scene,
                 energy_functions=energy_functions,
                 initial_a=acceleration,
                 initial_t=temperature,
-                timer=timer,
-            )    
-        if "reduced_exact_accelerations" in additional_args:
-            scene.reduced.exact_acceleration = additional_args['reduced_exact_accelerations'][step]
+                # timer=timer,
+            )
         scene.reduced_exact_accelerations.append(scene.reduced.exact_acceleration)
 
         scene.reorient_and_set_lifted()

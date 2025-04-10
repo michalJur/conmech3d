@@ -479,7 +479,7 @@ def convert_to_jax(layer_list, target_data=None):
 
 
 # TODO: all in Jax?
-def solve(
+def solve( ###
     apply_net,
     scene: SceneInput,
     energy_functions: EnergyFunctions,
@@ -489,13 +489,17 @@ def solve(
 ):
     _ = initial_a, initial_t
 
-    with timer["jax_calculator"]:
-        scene.reduced.exact_acceleration, _ = Calculator.solve(
-            scene=scene.reduced,
-            energy_functions=energy_functions[1],  # 0],
-            initial_a=scene.reduced.lifted_acceleration,  # scene.reduced.exact_acceleration, #initial_reduced,
-            timer=timer,
-        )
+
+    if scene.reduced.exact_acceleration is None:
+        with timer["dense_solver"]:
+            scene.reduced.exact_acceleration, _ = Calculator.solve(
+                scene=scene.reduced,
+                energy_functions=energy_functions[1],  # 0],
+                initial_a=scene.reduced.lifted_acceleration,  # scene.reduced.exact_acceleration, #initial_reduced,
+                timer=timer,
+            )
+    else:
+        print("Taking prepared reduced acceleration")
 
     device_number = 0  # using GPU 0
 
