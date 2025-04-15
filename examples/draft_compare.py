@@ -33,6 +33,14 @@ def main():
     ]
     num_runs = 3  # Number of times to run each scenario
 
+
+    # copy_dir = '/home/michal/Desktop/conmech3d/output/25.04.11-09.46.59 - (17439274217021 - EPOCH6 - MODEL) - compare'
+    # copy_dir = '/home/michal/Desktop/conmech3d/output/25.04.11-23.44.22 - (17442777618789 - EPOCH 16 - MODEL) - compare'
+    # redo_modes = [base_mode, *other_modes]
+    # redo_modes = ['net']
+    copy_dir = None
+    redo_modes = None
+
     config = get_train_config(shell=False, mode=None)
     checkpoint_path = get_checkpoint_path(config=config)
     label = checkpoint_path.split("/")[-1]
@@ -42,11 +50,28 @@ def main():
     # main_dir = '/home/michal/Desktop/conmech3d/output/25.04.05-21.29.31 - (17434958282739 - EPOCH 16 - MODEL) - compare'
 
     cmh.create_folders(main_dir)
-    run_all_simulations(main_dir=main_dir, base_mode=base_mode, other_modes=other_modes, config=config, skip_base=False, num_runs=num_runs)
+    run_all_simulations(main_dir=main_dir, copy_dir=copy_dir, base_mode=base_mode, other_modes=other_modes, redo_modes=redo_modes, config=config, skip_base=False, num_runs=num_runs)
     create_report(main_dir=main_dir, base_mode=base_mode, other_modes=other_modes)
 
     # input("Press Enter to continue...")
 
+
+
+def copy_previous_results(copy_dir, main_dir, modes_to_copy, scenario_name):
+    """Copy previous simulation results for specified modes."""
+    source_scenario = Path(copy_dir) / scenario_name
+    target_scenario = Path(main_dir) / scenario_name
+    
+    for mode in modes_to_copy:
+        source_mode = source_scenario / mode
+        target_mode = target_scenario / mode
+        
+        if source_mode.exists():
+            print(f"Copying {mode} results for {scenario_name}")
+            cmh.create_folders(str(target_mode))
+            cmh.copy_folder(str(source_mode), str(target_mode))
+        else:
+            print(f"Warning: Could not find {mode} results in {source_scenario}")
 
 
 def run_single_scenario_single_mode(scenario, config, mode, additional_args = {}):
@@ -80,7 +105,7 @@ def save_timer_data(timer_data, final_catalog):
 
 
 
-def run_all_simulations(main_dir, base_mode, other_modes, config, skip_base=False, num_runs=3):
+def run_all_simulations(main_dir, copy_dir, base_mode, other_modes, redo_modes, config, skip_base=False, num_runs=3):
     cmh.print_jax_configuration()
     all_scenarios = scenarios.all_compare(config.td, config.sc)
     for scenario in all_scenarios:
@@ -90,24 +115,39 @@ def run_all_simulations(main_dir, base_mode, other_modes, config, skip_base=Fals
             print(f"Running scenario: {scenario.name}")
             run_single_scenario(
                 main_dir=main_dir,
+                copy_dir=copy_dir,
                 scenario=scenario,
                 base_mode=base_mode,
                 other_modes=other_modes,
+                redo_modes=redo_modes,
                 config=config,
                 skip_base=skip_base
             )
 
-def run_single_scenario(main_dir, scenario, base_mode, other_modes, config, skip_base=False):
+def run_single_scenario(main_dir, copy_dir, scenario, base_mode, other_modes, redo_modes, config, skip_base=False):
     additional_args = {'main_dir': main_dir}
 
-    print("MODE: ", base_mode)
-    final_catalog = run_single_scenario_single_mode(scenario=scenario, config=config, mode=base_mode, additional_args=additional_args)
-    if not skip_base:
+    # Determine which modes to copy vs redo
+    modes_to_copy = []
+    if copy_dir:  # Only try to copy if copy_dir is specified
+        if base_mode not in redo_modes:
+            modes_to_copy.append(base_mode)
+        modes_to_copy.extend([mode for mode in other_modes if mode not in redo_modes])
+        
+        # Copy results from previous run
+        copy_previous_results(copy_dir, main_dir, modes_to_copy, scenario.name)
+
+    # Only run base_mode if it wasn't copied and isn't skipped
+    if base_mode not in modes_to_copy and not skip_base:
+        print("MODE: ", base_mode)
+        final_catalog = run_single_scenario_single_mode(scenario=scenario, config=config, mode=base_mode, additional_args=additional_args)
         additional_args['reduced_exact_accelerations'] = get_reduced_exact_acceleration(final_catalog=final_catalog)
 
+    # Run only the modes that need to be redone
     for mode in other_modes:
-        print("MODE: ", mode)
-        final_catalog = run_single_scenario_single_mode(scenario=scenario, config=config, mode=mode, additional_args=additional_args)
+        if mode not in modes_to_copy:
+            print("MODE: ", mode)
+            final_catalog = run_single_scenario_single_mode(scenario=scenario, config=config, mode=mode, additional_args=additional_args)
 
 
 def get_error(simulation_1, simulation_2, index, key):
@@ -345,6 +385,8 @@ def create_report(main_dir, base_mode, other_modes):
     # Combine and save statistics
     combined_timer_stats = combine_timer_statistics(scenarios_paths, base_mode, other_modes)
     save_comparison_statistics(scenarios_paths, base_mode, other_modes, report_path, combined_timer_stats)
+
+
 
 if __name__ == "__main__":
     main()

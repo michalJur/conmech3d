@@ -288,16 +288,18 @@ def get_newest_checkpoint_path_jax(config: TrainingConfig):
 
 
 def get_checkpoint_path(config: TrainingConfig=None):
-    return '/home/michal/Desktop/conmech3d/output/25.03.29-14.23.40 - JAX GRAPH MODELS/17433991184666 - EPOCH 8 - MODEL'
+    ### New data (larger range)
+    # return '/home/michal/Desktop/conmech3d/output/MODELS NEW FEATURES NEW DATA/17442777618789 - EPOCH 16 - MODEL'
+    ### Readded input displacement and velocity
+    # return '/home/michal/Desktop/conmech3d/output/MODELS NEW FEATURES OLD DATA/17439153689612 - EPOCH 15 - MODEL'
+    # return '/home/michal/Desktop/conmech3d/output/MODELS NEW FEATURES OLD DATA/17439394419766 - EPOCH 17 - MODEL'
+    # return '/home/michal/Desktop/conmech3d/output/MODELS NEW FEATURES OLD DATA/17439274217021 - EPOCH 16 - MODEL'
+    ### Simplified input, norm by current timestep
+    # return '/home/michal/Desktop/conmech3d/output/25.03.29-14.23.40 - JAX GRAPH MODELS/17433991184666 - EPOCH 8 - MODEL'
     return '/home/michal/Desktop/conmech3d/output/25.03.29-14.23.40 - JAX GRAPH MODELS/17434958282739 - EPOCH 16 - MODEL'
-    return '/home/michal/Desktop/conmech3d/output/25.03.29-14.23.40 - JAX GRAPH MODELS/17435684218629 - EPOCH 22 - MODEL'
-    ###
-    # return '/home/michal/Desktop/conmech3d/output/25.03.29-14.23.40 - JAX GRAPH MODELS/17436651484198 - EPOCH 30 - MODEL'
-    # return '/home/michal/Desktop/conmech3d/output/25.03.29-14.23.40 - JAX GRAPH MODELS/17436530512429 - EPOCH 29 - MODEL'
-    # return '/home/michal/Desktop/conmech3d/output/25.03.29-14.23.40 - JAX GRAPH MODELS/17435805068139 - EPOCH 23 - MODEL'
     # return '/home/michal/Desktop/conmech3d/output/25.03.29-14.23.40 - JAX GRAPH MODELS/17435684218629 - EPOCH 22 - MODEL'
-    #return get_newest_checkpoint_path_jax(config)
-
+    ### Longest run
+    # return '/home/michal/Desktop/conmech3d/output/25.02.23-15.49.20 - JAX GRAPH MODELS/17405623655142 - EPOCH 16 - MODEL'
 
 
 def main(args: Namespace):

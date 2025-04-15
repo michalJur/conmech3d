@@ -375,6 +375,19 @@ class Scene(BodyForces):
 
         return new_normalized_nodes - self.normalized_initial_nodes
 
+    @property
+    @mesh_normalization_decorator
+    def new_velocity_norm_by_itself(self):
+        # return self.normalize_rotate(velocity_new)  # normalize_shift_and_rotate
+        velocity_new = self.velocity_old + self.time_step * self.exact_acceleration
+        displacement_new = self.displacement_old + self.time_step * velocity_new
+
+        new_normalized_velocity = lnh.get_in_base2(
+            velocity_new,
+            self.get_rotation(displacement_new).T,
+        )
+        return new_normalized_velocity
+
 ######################
 
     @property
@@ -384,7 +397,7 @@ class Scene(BodyForces):
 
     @mesh_normalization_decorator
     def get_norm_by_reduced_lifted_new_displacement(self, exact_acceleration):
-        raise Exception('get_norm_by_reduced_lifted_new_displacement is depreciated!')
+        # raise Exception('get_norm_by_reduced_lifted_new_displacement is depreciated!')
         def _normalize_current_reduced(moved_nodes):
             if hasattr(self, "reduced"):
                 base_scene = self.reduced

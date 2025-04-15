@@ -38,6 +38,9 @@ Based on code by Matthias Müller - Ten Minute Physics, https://www.youtube.com/
     <input type="checkbox" onclick="toggleHiglightNodes()"> Highlight self-colliding nodes
     <input id="showDenseCheckbox" type="checkbox" onclick="onShowDense()"> Show dense
     <input id="showReducedCheckbox" type="checkbox" onclick="onShowReduced()"> Show reduced
+    <label for="animationSkipInput">Animation Skip:</label>
+    <input id="animationSkipInput" type="number" value="1" min="1" onchange="updateAnimationSkip(this.value)">
+    <div>Version 2</div>
     <br><br>
     <span id="denseNodesCount">0</span> boundary nodes&nbsp;&nbsp;
     <span id="surfacesCount">0</span> boundary surfaces&nbsp;&nbsp;
@@ -53,13 +56,27 @@ Based on code by Matthias Müller - Ten Minute Physics, https://www.youtube.com/
     <br><br>
     <div id="container"></div>
 
-    <script src="https://unpkg.com/three@0.139.2/build/three.min.js"></script>
-    <script src="https://unpkg.com/three@0.139.2/examples/js/controls/OrbitControls.js"></script>
+    <!-- <script src="https://unpkg.com/three@0.175.2/build/three.min.js"></script> -->
+    <!-- <script src="https://unpkg.com/three@0.175.2/examples/js/controls/OrbitControls.js"></script> -->
+    <!-- <script src="https://unpkg.com/three@0.139.2/examples/jsm/utils/BufferGeometryUtils.js"></script> -->
 
-    <script>
+    <script type="importmap">
+        {
+          "imports": {
+            "three": "https://cdnjs.cloudflare.com/ajax/libs/three.js/0.170.0/three.module.min.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/",
+            "three-subdivide": "https://unpkg.com/three-subdivide/build/index.module.js"
+
+          }
+        }
     </script>
 
     <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
+        import { LoopSubdivision } from 'https://unpkg.com/three-subdivide/build/index.module.js';
+
 
         window.onerror = (errorMsg, url, lineNumber) => {
             alert("Error occured: " + errorMsg);
@@ -87,7 +104,7 @@ Based on code by Matthias Müller - Ten Minute Physics, https://www.youtube.com/
         var gMouseDown = false;
 
         var meshes;
-        var animationSkip;
+        var animationSkip; // Default value
         var animationCount;
         var simulationName;
 
@@ -139,6 +156,12 @@ Based on code by Matthias Müller - Ten Minute Physics, https://www.youtube.com/
             await animationStepInnerAsync();
         }
 
+        // Add this function to handle animationSkip changes
+        window.updateAnimationSkip = async (newSkip) => {
+            animationSkip = parseInt(newSkip);
+            setHtml("skip", `${animationSkip} skip`);
+            await reloadMeshesAsync(); // Reload meshes with the new skip value
+        };
 
         setCheckbox("showDenseCheckbox", showDense);
         setCheckbox("showReducedCheckbox", showReduced);
@@ -227,15 +250,26 @@ Based on code by Matthias Müller - Ten Minute Physics, https://www.youtube.com/
                 var geometry = new THREE.BufferGeometry();
                 geometry.setAttribute('position', new THREE.BufferAttribute(this.denseNodes, 3));
                 geometry.setIndex(boundary_surfaces);
-                var material = new THREE.MeshPhongMaterial({ color: meshColor, side: THREE.DoubleSide });
+                // geometry = geometry.toNonIndexed();
+
+                geometry.computeVertexNormals();
+                // geometry.computeBoundingBox();
+                // geometry.computeBoundingSphere();
+                // const helper = new THREE.VertexNormalsHelper(geometry, 0.1, 0x00ff00, 1);
+                // scene.add(helper);
+
+                var material = new THREE.MeshStandardMaterial({ color: meshColor, side: THREE.DoubleSide}); //, shadowSide: THREE.DoubleSide});
+                
                 material.flatShading = true;
                 this.denseMesh = new THREE.Mesh(geometry, material);
                 this.denseMesh.name = "surfaceMesh";
-                // this.surfaceMesh.castShadow = true;
                 this.denseMesh.userData = this;
-                this.denseMesh.layers.enable(1);
-                this.denseMesh.geometry.computeVertexNormals();
+                // this.denseMesh.layers.enable(1);
+                // this.denseMesh.geometry = BufferGeometryUtils.mergeVertices(this.denseMesh.geometry);
+                // geometry = geometry.toNonIndexed();
                 this.denseMesh.visible = showDense;
+                this.denseMesh.castShadow = true;
+                this.denseMesh.receiveShadow = true;
 
                 if (nodesReduced == undefined) {
                     this.sparseNodes = null;
@@ -292,6 +326,7 @@ Based on code by Matthias Müller - Ten Minute Physics, https://www.youtube.com/
             }
         }
 
+
         function addObstacle(scene, mesh) {
             var obs = mesh.linear_obstacles;
             const dir = new THREE.Vector3(obs[0], obs[1], obs[2]);
@@ -305,17 +340,32 @@ Based on code by Matthias Müller - Ten Minute Physics, https://www.youtube.com/
             scene.remove(scene.getObjectByName("ground"));
 
             arrowHelper.name = "arrowHelper";
-            // scene.add(arrowHelper);
+            scene.add(arrowHelper);
 
-            var ground = new THREE.Mesh(
-                new THREE.PlaneBufferGeometry(2, 2, 1, 1),
-                new THREE.MeshPhongMaterial({ color: 0x414b54, shininess: 50, side: THREE.DoubleSide })
-            );
-            ground.lookAt(dir);
-            ground.position.set(obs[3], obs[4], obs[5]);
+            // var ground = new THREE.Mesh(
+            //     new THREE.PlaneBufferGeometry(2, 2, 1, 1),
+            //     new THREE.MeshPhongMaterial({ color: 0x414b54, shininess: 50, side: THREE.DoubleSide })
+            // );
+            // ground.lookAt(dir);
+            // ground.position.set(obs[3], obs[4], obs[5]);
+            // ground.receiveShadow = true; // Already enabled
+            // // ground.castShadow = true;    // Add casting shadows
+            // ground.name = "ground";
+            // scene.add(ground);
+            // Create ground plane
+            
+            const groundGeometry = new THREE.PlaneGeometry(20, 20);
+            const groundMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x414b54,
+                side: THREE.DoubleSide
+            });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.position.z = -8;
+            // ground.rotation.x = Math.PI / 2;
             ground.receiveShadow = true;
             ground.name = "ground";
             scene.add(ground);
+
 
             if (mesh.mesh_obstacles_nodes != undefined) {
                 for (var i = 0; i < mesh.mesh_obstacles_nodes.length; i += 1) {
@@ -324,16 +374,32 @@ Based on code by Matthias Müller - Ten Minute Physics, https://www.youtube.com/
 
                     var geometry = new THREE.BufferGeometry();
                     geometry.setAttribute('position', new THREE.BufferAttribute(obstacle_nodes, 3));
-                    geometry.setIndex(obstacle_boundary_surfaces);
-                    var material = new THREE.MeshPhongMaterial({ color: obstacleColor, side: THREE.DoubleSide });
+                    geometry.setIndex(obstacle_boundary_surfaces);       
+                    // 
+                    // geometry = BufferGeometryUtils.toTrianglesDrawMode(geometry);
+                    const iterations = 1;
+
+                    const params = {
+                        split:          true,       // optional, default: true
+                        uvSmooth:       false,      // optional, default: false
+                        preserveEdges:  true,      // optional, default: false
+                        flatOnly:       true,      // optional, default: false
+                        maxTriangles:   Infinity,   // optional, default: Infinity
+                    };
+                    geometry = LoopSubdivision.modify(geometry, iterations, params);
+
+
+                    // geometry
+                    geometry.computeVertexNormals();
+                    var material = new THREE.MeshStandardMaterial({ color: obstacleColor, side: THREE.DoubleSide });
                     material.flatShading = true;
                     var obstacleMesh = new THREE.Mesh(geometry, material);
                     obstacleMesh.name = 'obstacleMesh${i}';
-                    // this.surfaceMesh.castShadow = true;
                     obstacleMesh.userData = this;
-                    obstacleMesh.layers.enable(1);
-                    obstacleMesh.geometry.computeVertexNormals();
+                    // obstacleMesh.layers.enable(1);
                     obstacleMesh.visible = showDense;
+                    obstacleMesh.castShadow = true;     // Add casting shadows
+                    obstacleMesh.receiveShadow = true;   // Add receiving shadows
                     scene.add(obstacleMesh);
                 }
             }
@@ -346,23 +412,67 @@ Based on code by Matthias Müller - Ten Minute Physics, https://www.youtube.com/
             scene = new THREE.Scene();
 
             // scene.add(new THREE.AxesHelper(0.2));
+            // scene.background = new THREE.Color(0xf5f5dc); // Beige background
 
+            
             // Lights
             scene.add(new THREE.AmbientLight(0xffffff, 0.5));
             // scene.fog = new THREE.Fog(0x000000, 0, 15);
 
-            // var pos = (0.46668502, 0.66293614, 1.12681618);
-            var topLight = new THREE.DirectionalLight(0xffffff, 0.4);
-            topLight.position.set(0, 0, 5);
+            var topLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            // var topLight = new THREE.PointLight(0xffffff, 0.8, 100);
+            topLight.position.set(0, -1, 4);
             topLight.target.position.set(0, 0, 0);
+            topLight.castShadow = true;
+
+            // Adjust your existing code
+            // topLight.shadow.mapSize.width = 2048;  // Default is often 512
+            // topLight.shadow.mapSize.height = 2048;
+            topLight.shadow.bias = -0.0001; // Try different values
+            // topLight.shadow.bias = 0.001; // Try different values
+            // topLight.shadow.normalBias = 0.05; // Add normal bias
+            // topLight.shadow.radius = 4;
+
+            // Add these configurations
+            // topLight.shadow.camera.near = 0.5;
+            // topLight.shadow.camera.far = 50;
+            // topLight.shadow.camera.left = -10;
+            // topLight.shadow.camera.right = 10;
+            // topLight.shadow.camera.top = 10;
+            // topLight.shadow.camera.bottom = -10;
+
             scene.add(topLight);
             // scene.add(new THREE.DirectionalLightHelper(topLight, 0.1));
+            // scene.add(new THREE.CameraHelper(topLight.shadow.camera));
 
-            var bottomLight = new THREE.DirectionalLight(0xffffff, 0.4);
-            bottomLight.position.set(0, 0, -5);
-            bottomLight.target.position.set(0, 0, 0);
-            scene.add(bottomLight);
+            // var bottomLight = new THREE.DirectionalLight(0xffffff, 0.4);
+            // bottomLight.position.set(0, 0, -5);
+            // bottomLight.target.position.set(0, 0, 0);
+            // scene.add(bottomLight);
             // scene.add(new THREE.DirectionalLightHelper(bottomLight, 0.1));
+
+            // Lights
+            // const ambientLight = new THREE.AmbientLight(0xffffff, 0.3); // Reduced ambient light
+            // scene.add(ambientLight);
+
+            // Main directional light (sun-like)
+            // const mainLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            // mainLight.position.set(2, 4, 3);
+            // mainLight.castShadow = true;
+            // mainLight.shadow.mapSize.width = 2048;
+            // mainLight.shadow.mapSize.height = 2048;
+            // mainLight.shadow.camera.near = 0.1;
+            // mainLight.shadow.camera.far = 20;
+            // mainLight.shadow.camera.left = -5;
+            // mainLight.shadow.camera.right = 5;
+            // mainLight.shadow.camera.top = 5;
+            // mainLight.shadow.camera.bottom = -5;
+            // scene.add(mainLight);
+
+            // Soft fill light
+            // const fillLight = new THREE.DirectionalLight(0xffffff, 0.2);
+            // fillLight.position.set(-2, 2, -1);
+            // scene.add(fillLight);
 
             // Geometry
             var helper = new THREE.GridHelper(20, 20);
@@ -373,10 +483,15 @@ Based on code by Matthias Müller - Ten Minute Physics, https://www.youtube.com/
 
             // Renderer
 
-            gRenderer = new THREE.WebGLRenderer();
+            gRenderer = new THREE.WebGLRenderer({ antialias: true });
             gRenderer.shadowMap.enabled = true;
+            gRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            // gRenderer.shadowMapCullFace = THREE.CullFaceFrontBack;
+            // gRenderer.shadowMap.type = THREE.VSMShadowMap;
+
             gRenderer.setPixelRatio(window.devicePixelRatio);
             gRenderer.setSize(0.8 * window.innerWidth, 0.8 * window.innerHeight);
+            // gRenderer.outputEncoding = THREE.sRGBEncoding;
             window.addEventListener('resize', onWindowResize, false);
             container.appendChild(gRenderer.domElement);
 
@@ -389,7 +504,7 @@ Based on code by Matthias Müller - Ten Minute Physics, https://www.youtube.com/
 
             scene.add(gCamera);
 
-            gCameraControl = new THREE.OrbitControls(gCamera, gRenderer.domElement);
+            gCameraControl = new OrbitControls(gCamera, gRenderer.domElement);
             gCameraControl.zoomSpeed = 0.5;
             gCameraControl.panSpeed = 0.4;
 
@@ -397,14 +512,14 @@ Based on code by Matthias Müller - Ten Minute Physics, https://www.youtube.com/
 
 
         async function reloadMeshesAsync() {
-            meshes = [await loadFileAsync(`${simulationName}/0.json`)];
+            const meshPromises = [];
+            meshes = [];
 
-            animationSkip = meshes[0].skip;
-            // animationCount = count * animationSkip;// meshes.count * meshes.skip;
-
-            for (var i = animationSkip; i < animationCount; i += animationSkip) {
-                meshes.push(await loadFileAsync(`${simulationName}/${i}.json`, i, animationCount))
+            for (let i = 0; i < animationCount; i += animationSkip) {
+                meshPromises.push(loadFileAsync(`${simulationName}/${i}.json`, i, animationCount));
             }
+
+            meshes = await Promise.all(meshPromises);
 
             document.getElementById("loadedProgress").innerHTML = '';
             setHtml("count", `${animationCount} count`);
@@ -432,34 +547,35 @@ Based on code by Matthias Müller - Ten Minute Physics, https://www.youtube.com/
         }
 
         async function animationStepAsync() {
-            if (paused)
-                return;
+            if (paused) return;
 
             animationFrameFloat += animationSpeed;
-            if (animationFrame() > animationCount)
-                animationFrameFloat = 0;
+            if (animationFrame() > animationCount) animationFrameFloat = 0;
 
-            if (animationFrame() % animationSkip != 0)
-                return;
+            if (animationFrame() % animationSkip !== 0) return;
 
-            loadedProgress = parseInt(animationFrame() / animationCount * 100);
-            // setHtml("animationProgress", `${loadedProgress}% frame`);
-            setHtml("animationProgress", `${animationFrame()} frame`);
-            await animationStepInnerAsync();
+            const step = parseInt((animationFrame() % animationCount) / animationSkip);
+
+            animationStepInnerAsync();
         }
-
 
         async function animationStepInnerAsync() {
             var step = parseInt((animationFrame() % animationCount) / animationSkip);
 
-            var mesh = meshes[step];
-            body.updateMesh(mesh);
-            addObstacle(scene, mesh);
+            // if (!meshes[step]) {
+            //     meshes[step] = await loadFileAsync(`${simulationName}/${step * animationSkip}.json`);
+            // }
 
-            if (highlightNodes)
-                rehighlightNodes(body.getHighlightedNodes(mesh));
-            else
-                clearHighlightNodes();
+            var mesh = meshes[step];
+            if (mesh){
+                body.updateMesh(mesh);
+                addObstacle(scene, mesh);
+
+                if (highlightNodes)
+                    rehighlightNodes(body.getHighlightedNodes(mesh));
+                else
+                    clearHighlightNodes();
+            }
         }
 
         function clearHighlightNodes() {
@@ -501,13 +617,14 @@ Based on code by Matthias Müller - Ten Minute Physics, https://www.youtube.com/
         async function loadDataAsync() {
             await reloadMeshesAsync();
             await initMeshAsync();
+            await runAnimationAsync();
         }
 
         var body;
         initThreeScene();
         onWindowResize();
-        await loadDataAsync();
-        await runAnimationAsync();
+        // await loadDataAsync();
+        // await runAnimationAsync();
 
     </script>
 </body>
