@@ -556,26 +556,27 @@ class BaseDataset:
     def generate_data_process(self, num_workers: int = 1, process_id: int = 0):
         pass
 
-    def solve_and_prepare_scene(
+    def solve(
         self, scene, forces, energy_functions, reduced_energy_functions
     ):
-        scene.prepare(forces)
-
-        # scene.reduced.exact_acceleration, _ = self.solve_function(
-        #     scene=scene.reduced,
-        #     initial_a=scene.reduced.exact_acceleration,
-        #     energy_functions=reduced_energy_functions,
-        # )
+        scene.reduced.exact_acceleration, _ = self.solve_function(
+            scene=scene.reduced,
+            initial_a=scene.reduced.exact_acceleration,
+            energy_functions=reduced_energy_functions,
+        )
         # scene.reduced.lifted_acceleration = scene.reduced.exact_acceleration
 
         # scene.exact_acceleration = scene.lower_acceleration_from_position(
         #     scene.reduced.exact_acceleration
         # )
+        scene.exact_acceleration, _ = Calculator.solve(
+            scene=scene, energy_functions=energy_functions, initial_a=scene.exact_acceleration
+        )
 
-        scene.exact_acceleration, _ = Calculator.solve_compare_reduced(scene=scene,
-            energy_functions=[reduced_energy_functions, energy_functions],
-            initial_a=scene.exact_acceleration,
-            initial_t=None)
+        # scene.exact_acceleration, _ = Calculator.solve_compare_reduced(scene=scene,
+        #     energy_functions=[reduced_energy_functions, energy_functions],
+        #     initial_a=scene.exact_acceleration,
+        #     initial_t=None)
     
         scene.reorient_and_set_lifted()
         return scene, scene.exact_acceleration

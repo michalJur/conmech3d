@@ -85,6 +85,7 @@ def save_three(scene, step, folder, skip=1):
 
 
 def save_results_three(file_path, json_dict):
+    cmh.create_folders(file_path)
     with open(file_path, "w", encoding="utf-8") as file:
         json.dump(json_dict, file)
     create_three_list()

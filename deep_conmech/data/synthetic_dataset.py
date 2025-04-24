@@ -162,7 +162,7 @@ class SyntheticDataset(BaseDataset):
 
         scene.update_reduced()
 
-        scene, acceleration = self.solve_and_prepare_scene(scene, forces)
+        scene, acceleration = self.solve(scene, forces)
         return scene
 
     def generate_data(self):

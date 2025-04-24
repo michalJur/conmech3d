@@ -6,7 +6,7 @@ import pandas as pd
 from dotenv import load_dotenv
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-import seaborn as sns
+# import seaborn as sns
 
 from conmech.helpers import cmh
 from conmech.helpers.config import Config
@@ -31,7 +31,7 @@ def main():
         "net",
         "pca",
     ]
-    num_runs = 3  # Number of times to run each scenario
+    num_runs = 1# 3  # Number of times to run each scenario
 
 
     # copy_dir = '/home/michal/Desktop/conmech3d/output/25.04.11-09.46.59 - (17439274217021 - EPOCH6 - MODEL) - compare'

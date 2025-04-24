@@ -296,11 +296,12 @@ def get_checkpoint_path(config: TrainingConfig=None):
     # return '/home/michal/Desktop/conmech3d/output/MODELS NEW FEATURES OLD DATA/17439274217021 - EPOCH 16 - MODEL'
     ### Simplified input, norm by current timestep
     # return '/home/michal/Desktop/conmech3d/output/25.03.29-14.23.40 - JAX GRAPH MODELS/17433991184666 - EPOCH 8 - MODEL'
-    return '/home/michal/Desktop/conmech3d/output/25.03.29-14.23.40 - JAX GRAPH MODELS/17434958282739 - EPOCH 16 - MODEL'
+    path = '/output/25.03.29-14.23.40 - JAX GRAPH MODELS/17434958282739 - EPOCH 16 - MODEL'
     # return '/home/michal/Desktop/conmech3d/output/25.03.29-14.23.40 - JAX GRAPH MODELS/17435684218629 - EPOCH 22 - MODEL'
     ### Longest run
     # return '/home/michal/Desktop/conmech3d/output/25.02.23-15.49.20 - JAX GRAPH MODELS/17405623655142 - EPOCH 16 - MODEL'
-
+    absolute_path = '/home/mjureczka/Desktop/conmech3d' + path
+    return absolute_path
 
 def main(args: Namespace):
     cmh.print_jax_configuration()

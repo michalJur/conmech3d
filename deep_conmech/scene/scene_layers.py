@@ -81,7 +81,7 @@ class SceneLayers(Scene):
     def reorient_and_set_lifted(self):
         reorient_to_reduced = True
         if reorient_to_reduced:
-            print('REORIENTING!')
+            # print('REORIENTING!')
             self.exact_acceleration = self.reorient_to_reduced(self.exact_acceleration)
  
         self.lifted_acceleration = self.exact_acceleration

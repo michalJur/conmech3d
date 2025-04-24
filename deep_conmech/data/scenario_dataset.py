@@ -115,67 +115,69 @@ class ScenariosDataset(BaseDataset):
 
     def generate_data_process(self, num_workers: int = 1, process_id: int = 0):
         assigned_scenarios = self.get_assigned_scenarios(num_workers, process_id)
-        tqdm_description = f"Generating data - process {process_id+1}/{num_workers}"
-        simulation_data_count = np.sum(
-            [s.schedule.episode_steps for s in assigned_scenarios]
-        )
-        start_index = process_id * simulation_data_count
+        # tqdm_description = f"Generating data - process {process_id+1}/{num_workers}"
+        # simulation_data_count = np.sum(
+        #     [s.schedule.episode_steps for s in assigned_scenarios]
+        # )
+        # start_index = process_id * simulation_data_count
         # current_index = start_index
-        step_tqdm = cmh.get_tqdm(
-            range(simulation_data_count),
-            config=self.config,
-            desc=tqdm_description,
-            position=process_id,
-        )
-        scenario = assigned_scenarios[0]
+        # step_tqdm = cmh.get_tqdm(
+        #     range(simulation_data_count),
+        #     config=self.config,
+        #     desc=tqdm_description,
+        #     position=process_id,
+        # )
+        # scenario_id = 0
+        # scenario = assigned_scenarios[scenario_id]
 
-        for index in step_tqdm:
-            episode_steps = scenario.schedule.episode_steps
-            ts = (index % episode_steps) + 1
-            if ts == 1:
-                scenario = assigned_scenarios[int(index / episode_steps)]
-                print(f"Scenario {scenario.name}")
-                scene = self.get_scene(scenario=scenario, config=self.config)
-                energy_functions = EnergyFunctions(
+        for scenario_id, scenario in enumerate(assigned_scenarios):
+            # print(f"Scenario {scenario.name}")
+            scene = self.get_scene(scenario=scenario, config=self.config)
+            energy_functions = EnergyFunctions(
                     simulation_config=scene.simulation_config
+            )
+            reduced_energy_functions = EnergyFunctions(
+                simulation_config=scene.simulation_config
+            )
+
+            time_tqdm = scenario.get_tqdm(desc=f"Simulating {scenario_id+1}/{len(assigned_scenarios)}", config=self.config)
+            for episode_step in time_tqdm:
+                current_time = episode_step * scene.time_step
+
+                forces = scenario.get_forces_by_function(scene, current_time)
+                scene.prepare(forces)
+
+                scene.reduced.exact_acceleration, _ = Calculator.solve(
+                    scene=scene.reduced,
+                    initial_a=scene.reduced.exact_acceleration,
+                    energy_functions=reduced_energy_functions,
                 )
-                reduced_energy_functions = EnergyFunctions(
-                    simulation_config=scene.simulation_config
+                scene.exact_acceleration, _ = Calculator.solve(
+                    scene=scene, energy_functions=energy_functions, initial_a=scene.exact_acceleration
+                )
+                scene.reorient_and_set_lifted()
+
+                if self.with_scenes_file:
+                    self.safe_save_scene(scene=scene, data_path=self.scenes_data_path)
+                else:
+                    self.save_features_and_target(scene=scene)
+
+                final_catalog = (
+                    f"{self.config.output_catalog}/{self.config.current_time} - DATASET"
+                )
+                label = f"{scene.simulation_config.mode}_{scene.mesh_prop.mesh_type}"
+
+                label = cmh.get_run_label(self.config, scenario)
+                save_three(
+                    scene=scene,
+                    step=episode_step, #index,
+                    # label=label, #f"{self.config.current_time}_dataset_{self.description}_{scene.simulation_config.mode}_{scene.mesh_prop.mesh_type}",  # timestamp
+                    # folder="./three",
+                    folder=f"{final_catalog}/three/{label}",
+                    skip=20,
                 )
 
-            current_time = ts * scene.time_step
+                scene.iterate_self(scene.exact_acceleration)
 
-            forces = scenario.get_forces_by_function(scene, current_time)
-            scene, acceleration = self.solve_and_prepare_scene(
-                scene, forces, energy_functions, reduced_energy_functions
-            )
-
-            if self.with_scenes_file:
-                self.safe_save_scene(scene=scene, data_path=self.scenes_data_path)
-            else:
-                self.save_features_and_target(scene=scene)
-
-            # self.check_and_print(
-            #     self.data_count, current_index, scene, step_tqdm, tqdm_description, current_time
-            # )
-            # current_index += 1
-
-            final_catalog = (
-                f"{self.config.output_catalog}/{self.config.current_time} - DATASET"
-            )
-            label = f"{scene.simulation_config.mode}_{scene.mesh_prop.mesh_type}"
-
-            label = cmh.get_run_label(self.config, scenario)
-            save_three(
-                scene=scene,
-                step=index,
-                # label=label, #f"{self.config.current_time}_dataset_{self.description}_{scene.simulation_config.mode}_{scene.mesh_prop.mesh_type}",  # timestamp
-                # folder="./three",
-                folder=f"{final_catalog}/three/{label}",
-                skip=20,
-            )
-
-            scene.iterate_self(acceleration)
-
-        step_tqdm.set_description(f"{step_tqdm.desc} - done")
+        # step_tqdm.set_description(f"{step_tqdm.desc} - done")
         return True

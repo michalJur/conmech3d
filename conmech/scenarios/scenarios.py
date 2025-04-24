@@ -818,6 +818,32 @@ def bunny_obstacles(
             )
         )
 
+def bunny_slide(
+    mesh_density: int,
+    final_time: float,
+    simulation_config: SimulationConfig,
+    scale=1,
+    tag="",
+    arg=1.0,
+    scale_forces=1.0,
+    name="bunny_slide",
+):
+    _, _, _ = scale, tag, arg
+    obstacle_meshes = []
+    for i in range(1, 6):
+        mesh_type = "slide_left"
+        shift = (i-1) * -1.5
+        obstacle_meshes.append(
+            MeshProperties(
+                dimension=3,
+                mesh_type=mesh_type,
+                scale=[1],
+                mesh_density=[16],
+                initial_position=[0, shift, -1.5 * i],
+                slope=45
+            )
+        )
+
     return Scenario(
         name=name,
         mesh_prop=MeshProperties(
@@ -879,32 +905,44 @@ def all_train(td, sc):
     
     hardness = 100.0
     friction = 2.0  # 0.0 (5.0)
-    obstacle_distance_scale = 1.1  # 1.2 # 0.7
+    # distance = 1.1  # 1.2 # 0.7
+    # slope = 45
     
-    scale_forces_list = [1.0, 1.5, 2.0, 2.5, 3.0, 3.5]
+
     for forces_dim in [0, 1, 2]:
         for forces_dir in [-1.0, 1.0]:
-            for normals_dim_plus in [0, 1, -1, 2, -2]:
-                for scale_forces in scale_forces_list:
-                    forces = [0.0, 0.0, 0.0]
-                    forces[forces_dim] = forces_dir
-                    forces = np.array(forces)
+            for scale_forces in [1.0, 2.0, 3.0]:
+                for distance in [1.1, 1.6]:
+                    for normals_dim_plus, slope in [(0,0), (1,20), (1,-45), (2,-20), (2,45)]:
+                        force_and_node = [0.0, 0.0, 0.0]
+                        force_and_node[forces_dim] = forces_dir
+                        force_and_node = np.array(force_and_node)
 
-                    normals = [0.0, 0.0, 0.0]
-                    normals[forces_dim] = -forces_dir
-                    if normals_dim_plus != 0:
-                        normals[(forces_dim + np.abs(normals_dim_plus)) % 3] = np.sign(
-                            normals_dim_plus
-                        )
-                    name = f"bunny_train_scale_forces:{scale_forces}_forces_and_nodes:{forces}_obstacle_normals:{normals}"
-                    args.append(
-                        {
-                            "scale_forces": scale_forces,
-                            "forces_and_nodes": forces,
-                            "obstacle_normals": normals,
-                            "name": name,
-                        }
-                    )
+                        force = scale_forces * force_and_node
+                        position = distance * force_and_node
+
+                        normal = np.zeros(3)
+                        slope_rad = np.radians(slope)
+                        normal[forces_dim] = -forces_dir * np.cos(slope_rad)
+                            
+                        if slope == 0:
+                            sloped = None
+                        else:
+                            sloped = (forces_dim + normals_dim_plus) % 3
+                            normal[sloped] = np.sin(np.abs(slope_rad)) * np.float64(np.sign(slope_rad))
+                        normal = normal / np.linalg.norm(normal)
+
+                        name = f"bunny_train-force:{force}_distance:{distance}_sloped:{sloped}_slope:{slope}"
+                        if name not in args:
+                            args.append(
+                                {
+                                    "force": force,
+                                    "position": position,
+                                    "normal": normal,
+                                    "name": name,
+                                }
+                            )
+    args.sort(key=lambda x: x["name"])
     data = []
     data.extend(
         [
@@ -918,13 +956,12 @@ def all_train(td, sc):
                 ),
                 body_prop=default_body_prop_3d,
                 schedule=Schedule(final_time=final_time),
-                forces_function=arg["scale_forces"]
-                * arg["forces_and_nodes"],  # scale_forces * [0.0, 0.0, -1.0]),
+                forces_function=arg["force"],
                 obstacle=Obstacle(
                     np.array(
                         [
-                            [arg["obstacle_normals"]],
-                            [obstacle_distance_scale * arg["forces_and_nodes"]],
+                            [arg["normal"]],
+                            [arg["position"]],
                         ]
                     ),
                     ObstacleProperties(hardness=hardness, friction=friction),
@@ -947,6 +984,7 @@ def all_train(td, sc):
 
 def all_validation(td, sc):
     args = get_args(td, sc)
+    return []
     if td.dimension == 3:
         return [
             [
@@ -990,6 +1028,15 @@ def all_validation(td, sc):
 
 def all_compare(td, sc):
     final_time = 4.0
+    return [
+            bunny_slide(
+                mesh_density=td.mesh_density,
+                scale=1,
+                final_time=2.0, #8.0,
+                simulation_config=sc,
+                scale_forces=2.5,#5.0,
+            )
+        ]
     return [
                 bunny_obstacles(
                     mesh_density=td.mesh_density,

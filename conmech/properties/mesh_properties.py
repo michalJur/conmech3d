@@ -10,6 +10,7 @@ class MeshProperties:
     mesh_density: List[float]
     scale: List[float]
     dimension: int
+    slope: Optional[float] = None
     initial_base: Optional[np.ndarray] = None
     initial_position: Optional[np.ndarray] = None
     switch_orientation: bool = False
