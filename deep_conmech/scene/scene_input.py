@@ -139,9 +139,9 @@ class SceneInput(SceneRandomized):
             )
 
         with jax.default_device(jax.devices("cpu")[0]):
-            boundary_normals = prepare_nodes(
-                scene.get_normalized_boundary_normals_jax()
-            )
+            # boundary_normals = prepare_nodes(
+            #     scene.get_normalized_boundary_normals_jax()
+            # )
 
             # boundary_friction = self.prepare_node_data(
             #     data=self.get_friction_input(),
@@ -157,6 +157,7 @@ class SceneInput(SceneRandomized):
             # )
             # input_forces = prepare_nodes(scene.input_forces)
             if reduced:
+                input_initial_nodes = prepare_nodes(self.reduced.input_initial_nodes)
                 new_displacement = prepare_nodes(
                     self.reduced.new_displacement_norm_by_itself
                 )
@@ -165,6 +166,7 @@ class SceneInput(SceneRandomized):
                 # )
                 return jnp.hstack(
                     (
+                        input_initial_nodes,
                         new_displacement,
                         # linear_acceleration,
                         # boundary_normals,
@@ -175,6 +177,7 @@ class SceneInput(SceneRandomized):
                     )
                 )
             else:
+                input_initial_nodes = prepare_nodes(self.input_initial_nodes)
                 # new_randomized_displacement = self.to_normalized_displacement(0 * self.exact_acceleration) #use old acceleration
 
                 # if self.simulation_config.mode != "net": # TODO: Clean
@@ -191,10 +194,11 @@ class SceneInput(SceneRandomized):
                 return jnp.hstack(
                     # TODO: Add previous accelerations
                     (
+                        input_initial_nodes,
                         # prepare_nodes(new_randomized_displacement),
                         # new_lowered_displacement,
                         # linear_acceleration,
-                        0 * boundary_normals,
+                        # 0 * boundary_normals,
                         # boundary_friction,
                         # boundary_normal_response,
                         # boundary_volume,

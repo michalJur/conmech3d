@@ -911,8 +911,8 @@ def all_train(td, sc):
 
     for forces_dim in [0, 1, 2]:
         for forces_dir in [-1.0, 1.0]:
-            for scale_forces in [1.0, 2.0, 3.0]:
-                for distance in [1.1, 1.6]:
+            for scale_forces in [1.0, 2.5, 5.0]:
+                for distance in [1.5]: #][1.1, 1.6]:
                     for normals_dim_plus, slope in [(0,0), (1,20), (1,-45), (2,-20), (2,45)]:
                         force_and_node = [0.0, 0.0, 0.0]
                         force_and_node[forces_dim] = forces_dir
