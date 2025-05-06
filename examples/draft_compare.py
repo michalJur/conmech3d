@@ -1,4 +1,5 @@
 from datetime import datetime
+import os
 from pathlib import Path
 import pickle
 import numpy as np
@@ -27,19 +28,13 @@ def main():
       
     base_mode = "normal_with_reduced"
     other_modes = [
+        # "pca",
         "skinning",
         "net",
-        "pca",
     ]
-    num_runs = 1# 3  # Number of times to run each scenario
+    num_runs = 3 # 1 3  # Number of times to run each scenario
 
-
-    # copy_dir = '/home/michal/Desktop/conmech3d/output/25.04.11-09.46.59 - (17439274217021 - EPOCH6 - MODEL) - compare'
-    # copy_dir = '/home/michal/Desktop/conmech3d/output/25.04.11-23.44.22 - (17442777618789 - EPOCH 16 - MODEL) - compare'
-    # redo_modes = [base_mode, *other_modes]
-    # redo_modes = ['net']
-    copy_dir = None
-    redo_modes = None
+    copy_dir = '/home/michal/Desktop/conmech3d/output/BASE'
 
     config = get_train_config(shell=False, mode=None)
     checkpoint_path = get_checkpoint_path(config=config)
@@ -47,49 +42,60 @@ def main():
     main_dir = (
         f"{config.output_catalog}/{config.current_time} - ({label}) - compare"
     )
-    # main_dir = '/home/michal/Desktop/conmech3d/output/25.04.05-21.29.31 - (17434958282739 - EPOCH 16 - MODEL) - compare'
 
     cmh.create_folders(main_dir)
-    run_all_simulations(main_dir=main_dir, copy_dir=copy_dir, base_mode=base_mode, other_modes=other_modes, redo_modes=redo_modes, config=config, skip_base=False, num_runs=num_runs)
-    create_report(main_dir=main_dir, base_mode=base_mode, other_modes=other_modes)
-
+    run_all_simulations(main_dir=main_dir, copy_dir=copy_dir, base_mode=base_mode, other_modes=other_modes, config=config, num_runs=num_runs)
+    
+    # main_dir = '/home/michal/Desktop/conmech3d/output/25.05.02-11.33.57 - (17461589058378 - EPOCH 4 - MODEL) - compare'
+    # create_report(main_dir=main_dir, base_mode=base_mode, other_modes=other_modes)
     # input("Press Enter to continue...")
 
 
 
-def copy_previous_results(copy_dir, main_dir, modes_to_copy, scenario_name):
-    """Copy previous simulation results for specified modes."""
-    source_scenario = Path(copy_dir) / scenario_name
-    target_scenario = Path(main_dir) / scenario_name
-    
-    for mode in modes_to_copy:
-        source_mode = source_scenario / mode
-        target_mode = target_scenario / mode
-        
-        if source_mode.exists():
-            print(f"Copying {mode} results for {scenario_name}")
-            cmh.create_folders(str(target_mode))
-            cmh.copy_folder(str(source_mode), str(target_mode))
-        else:
-            print(f"Warning: Could not find {mode} results in {source_scenario}")
+def copy_previous_results(copy_dir, main_dir):
+    """Copy all previous simulation results from copy_dir to main_dir."""
+    if copy_dir and Path(copy_dir).exists():
+        print(f"Copying previous results from {copy_dir}")
+        cmh.copy_folder(copy_dir, main_dir)
+    else:
+        print(f"Warning: Could not find copy directory {copy_dir}")
+
+
+def get_final_catalog(scenario, config, mode, additional_args):
+    catalog = os.path.splitext(os.path.basename(__file__))[0].upper()
+
+    if 'main_dir' in additional_args:
+        main_dir = additional_args['main_dir']
+    else:
+        main_dir = f"{config.output_catalog}/{config.current_time} - {catalog}"
+
+    final_catalog = f"{main_dir}/{scenario.name}/{mode}"
+    # _{scene.mesh_prop.mesh_type}
+    return final_catalog
 
 
 def run_single_scenario_single_mode(scenario, config, mode, additional_args = {}):
     additional_args['timer'] = Timer()
     config.sc.mode = mode
 
-    _, scenario_dirs = simulation_runner.run_examples(
-        all_scenarios=[scenario],
-        file=__file__,
+    final_catalog = get_final_catalog(scenario, config, mode, additional_args)
+    
+    # Skip if results already exist
+    if Path(final_catalog).exists():
+        print(f"Skipping {mode} for {scenario.name} - results already exist")
+        return final_catalog
+    
+    simulation_runner.run_example(
+        scenario=scenario,
+        final_catalog=final_catalog,
         plot_animation=False,
-        config=config, #Config(shell=False),
+        config=config,
         save_all=True,
         additional_args=additional_args
     )
-    scenario_dir = scenario_dirs[0]
-
-    save_timer_data(additional_args['timer'], final_catalog=scenario_dir)
-    return scenario_dir
+        
+    save_timer_data(additional_args['timer'], final_catalog=final_catalog)
+    return final_catalog
 
 
 def save_timer_data(timer_data, final_catalog):
@@ -105,49 +111,40 @@ def save_timer_data(timer_data, final_catalog):
 
 
 
-def run_all_simulations(main_dir, copy_dir, base_mode, other_modes, redo_modes, config, skip_base=False, num_runs=3):
+def run_all_simulations(main_dir, copy_dir, base_mode, other_modes, config, num_runs=3):
     cmh.print_jax_configuration()
+    
+    # Copy previous results at the start if copy_dir is specified
+    if copy_dir:
+        copy_previous_results(copy_dir, main_dir)
+    
     all_scenarios = scenarios.all_compare(config.td, config.sc)
     for scenario in all_scenarios:
-        main_scenario_name = scenario.name 
+        main_scenario_name = scenario.name
         for run_idx in range(num_runs):
             scenario.name = f"{main_scenario_name}_run{run_idx+1}"
             print(f"Running scenario: {scenario.name}")
             run_single_scenario(
                 main_dir=main_dir,
-                copy_dir=copy_dir,
                 scenario=scenario,
                 base_mode=base_mode,
                 other_modes=other_modes,
-                redo_modes=redo_modes,
-                config=config,
-                skip_base=skip_base
+                config=config
             )
+            print("Creating report...")
+            create_report(main_dir=main_dir, base_mode=base_mode, other_modes=other_modes)
 
-def run_single_scenario(main_dir, copy_dir, scenario, base_mode, other_modes, redo_modes, config, skip_base=False):
+def run_single_scenario(main_dir, scenario, base_mode, other_modes, config):
     additional_args = {'main_dir': main_dir}
 
-    # Determine which modes to copy vs redo
-    modes_to_copy = []
-    if copy_dir:  # Only try to copy if copy_dir is specified
-        if base_mode not in redo_modes:
-            modes_to_copy.append(base_mode)
-        modes_to_copy.extend([mode for mode in other_modes if mode not in redo_modes])
-        
-        # Copy results from previous run
-        copy_previous_results(copy_dir, main_dir, modes_to_copy, scenario.name)
+    print("MODE: ", base_mode)
+    final_catalog = run_single_scenario_single_mode(scenario=scenario, config=config, mode=base_mode, additional_args=additional_args)
+    additional_args['reduced_exact_accelerations'] = get_reduced_exact_acceleration(final_catalog=final_catalog)
 
-    # Only run base_mode if it wasn't copied and isn't skipped
-    if base_mode not in modes_to_copy and not skip_base:
-        print("MODE: ", base_mode)
-        final_catalog = run_single_scenario_single_mode(scenario=scenario, config=config, mode=base_mode, additional_args=additional_args)
-        additional_args['reduced_exact_accelerations'] = get_reduced_exact_acceleration(final_catalog=final_catalog)
-
-    # Run only the modes that need to be redone
+    # Run other modes
     for mode in other_modes:
-        if mode not in modes_to_copy:
-            print("MODE: ", mode)
-            final_catalog = run_single_scenario_single_mode(scenario=scenario, config=config, mode=mode, additional_args=additional_args)
+        print("MODE: ", mode)
+        run_single_scenario_single_mode(scenario=scenario, config=config, mode=mode, additional_args=additional_args)
 
 
 def get_error(simulation_1, simulation_2, index, key):
@@ -157,6 +154,15 @@ def get_error(simulation_1, simulation_2, index, key):
 def get_reduced_exact_acceleration(final_catalog):
     simulation = cmh.load_simulation(final_catalog + '/scenes/data.scene')
     return [s['reduced_exact_acceleration'] for s in simulation]
+
+
+def load_simulation(path):
+    """Safe loading of simulation data."""
+    try:
+        return cmh.load_simulation(path)
+    except (FileNotFoundError, pickle.UnpicklingError, EOFError) as e:
+        print(f"Skipping {path} - simulation data not available")
+        return None
 
 
 def save_comparison_statistics(scenarios_paths, base_mode, other_modes, report_path, timer_stats):
@@ -216,12 +222,12 @@ def save_comparison_statistics(scenarios_paths, base_mode, other_modes, report_p
     scenario_errors = {}
     
     # Add a dictionary to store summed errors across all runs
-    scenario_summed_errors = {}
+    scenario_mean_errors = {}
     
     for base_name, paths in scenario_groups.items():
         markdown_content += f"## Scenario: {base_name}\n\n"
         scenario_errors[base_name] = {}
-        scenario_summed_errors[base_name] = {mode: {'total': 0.0, 'max': 0.0} for mode in other_modes}
+        scenario_mean_errors[base_name] = {mode: {'total': 0.0, 'max': 0.0} for mode in other_modes}
 
         for key in ['displacement_old']:
             markdown_content += f"### {key} Results\n\n"
@@ -231,8 +237,8 @@ def save_comparison_statistics(scenarios_paths, base_mode, other_modes, report_p
             max_rows = 0
 
             for path in paths:
-                base = cmh.load_simulation(str(path / base_mode / "scenes" / "data.scene"))
-                if base[0][key] is None:
+                base = load_simulation(str(path / base_mode / "scenes" / "data.scene"))
+                if base is None or base[0][key] is None:
                     continue
 
                 run_rows = []
@@ -241,31 +247,37 @@ def save_comparison_statistics(scenarios_paths, base_mode, other_modes, report_p
 
                 plt.figure(figsize=(10, 6))
                 # Calculate total errors first to find middle error
-                mode_total_errors = {}
+                mode_mean_errors = {}
                 for mode in other_modes:
-                    pretendent = cmh.load_simulation(str(path / mode / "scenes" / "data.scene"))
+                    pretendent = load_simulation(str(path / mode / "scenes" / "data.scene"))
+                    if pretendent is None:
+                        continue
+
                     simulation_len = min(len(base), len(pretendent))
                     
                     errors = []
                     for index in range(simulation_len):
                         errors.append(get_error(base, pretendent, index=index, key=key))
                     errors = np.array(errors)
-                    mode_total_errors[mode] = np.sum(errors)
+                    mode_mean_errors[mode] = np.mean(errors)
                     
                     # Update summed errors
-                    scenario_summed_errors[base_name][mode]['total'] += np.sum(errors)
-                    scenario_summed_errors[base_name][mode]['max'] = max(
-                        scenario_summed_errors[base_name][mode]['max'],
+                    scenario_mean_errors[base_name][mode]['total'] += np.mean(errors)
+                    scenario_mean_errors[base_name][mode]['max'] = max(
+                        scenario_mean_errors[base_name][mode]['max'],
                         np.max(errors)
                     )
 
                 # Sort total errors and get the middle one as reference
-                sorted_errors = sorted(mode_total_errors.values())
+                sorted_errors = sorted(mode_mean_errors.values())
                 middle_idx = len(sorted_errors) // 2
                 reference_error = sorted_errors[middle_idx]
 
                 for mode in other_modes:
-                    pretendent = cmh.load_simulation(str(path / mode / "scenes" / "data.scene"))
+                    pretendent = load_simulation(str(path / mode / "scenes" / "data.scene"))
+                    if pretendent is None:
+                        continue
+
                     simulation_len = min(len(base), len(pretendent))
                     
                     errors = []
@@ -279,7 +291,7 @@ def save_comparison_statistics(scenarios_paths, base_mode, other_modes, report_p
                     scenario_errors[base_name][mode].extend(errors.tolist())
                     
                     max_error = np.max(errors)
-                    total_error = mode_total_errors[mode]
+                    total_error = mode_mean_errors[mode]
                     error_percentage = (total_error / reference_error) * 100
 
                     run_rows.append(f"| {mode} | {max_error:.6f} | {total_error:.6f} | {error_percentage:.1f}% |")
@@ -338,10 +350,10 @@ def save_comparison_statistics(scenarios_paths, base_mode, other_modes, report_p
     markdown_content += "## Aggregated Total Errors Across All Scenarios and Runs\n\n"
     markdown_content += "| Mode | Total Error | Max Error | % of Mid Total |\n"
     markdown_content += "|------|-------------|-----------|----------------|\n"
-    total_errors = [sum(scenario_summed_errors[base_name][mode]['total'] for base_name in scenario_summed_errors) for mode in other_modes]
+    total_errors = [sum(scenario_mean_errors[base_name][mode]['total'] for base_name in scenario_mean_errors) for mode in other_modes]
     median_total_error = np.median(total_errors)
     for mode, total_error in zip(other_modes, total_errors):
-        max_error = max(scenario_summed_errors[base_name][mode]['max'] for base_name in scenario_summed_errors)
+        max_error = max(scenario_mean_errors[base_name][mode]['max'] for base_name in scenario_mean_errors)
         percentage_of_median = (total_error / median_total_error) * 100 if median_total_error > 0 else 0
         markdown_content += f"| {mode} | {total_error:.6f} | {max_error:.6f} | {percentage_of_median:.1f}% |\n"
 
@@ -379,8 +391,9 @@ def create_report(main_dir, base_mode, other_modes):
     cmh.recreate_folder(report_path)
 
     # Load simulation results and extract metadata
-    scenarios_paths = [f for f in Path(main_dir).glob("*")     
+    scenarios_paths = [f for f in Path(main_dir).glob("*")
                       if f.is_dir() and not f.name.startswith('.') and not f == report_path]
+    scenarios_paths = sorted(scenarios_paths, key=lambda x: x.name)
 
     # Combine and save statistics
     combined_timer_stats = combine_timer_statistics(scenarios_paths, base_mode, other_modes)

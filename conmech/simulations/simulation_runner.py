@@ -145,14 +145,23 @@ def run_examples(
     final_catalogs = []
     for i, scenario in enumerate(all_scenarios):
         print(f"-----EXAMPLE {i + 1}/{len(all_scenarios)}-----")
+        
         catalog = os.path.splitext(os.path.basename(file))[0].upper()
+        # if save_files:
+        if 'main_dir' in additional_args:
+            main_dir = additional_args['main_dir']
+        else:
+            main_dir = f"{config.output_catalog}/{config.current_time} - {catalog}"
+
+        final_catalog = f"{main_dir}/{scenario.name}/{scene.simulation_config.mode}"
+        # _{scene.mesh_prop.mesh_type}
 
         scene, final_catalog = run_scenario(
             solve_function=get_solve_function(scenario.simulation_config),
             scenario=scenario,
             config=config,
             run_config=RunScenarioConfig(
-                catalog=catalog,
+                final_catalog=final_catalog,
                 save_all=save_all,
                 simulate_dirty_data=simulate_dirty_data,
                 plot_animation=plot_animation,
@@ -166,9 +175,34 @@ def run_examples(
     print("DONE")
     return scenes, final_catalogs
 
+def run_example(
+    scenario,
+    final_catalog,
+    plot_animation,
+    config: Config,
+    simulate_dirty_data=False,
+    save_all=False,
+    additional_args = {},
+):
+    run_scenario(
+        solve_function=get_solve_function(scenario.simulation_config),
+        scenario=scenario,
+        config=config,
+        run_config=RunScenarioConfig(
+            final_catalog=final_catalog,
+            save_all=save_all,
+            simulate_dirty_data=simulate_dirty_data,
+            plot_animation=plot_animation,
+        ),
+        scene=create_scene(scenario),
+        additional_args=additional_args
+    )
+    print("DONE")
+    return
+
 @dataclass
 class RunScenarioConfig:
-    catalog: Optional[str] = None
+    final_catalog: Optional[str] = None
     simulate_dirty_data: bool = False
     plot_animation: bool = False
     save_all: bool = False
@@ -176,19 +210,20 @@ class RunScenarioConfig:
 
 def save_scene(scene: Scene, final_catalog: str, save_animation: bool):
     # Blender
-    blender_data_path = f"{final_catalog}/blender/data.blender"
-    
-    blender_data = (scene.boundary_nodes, scene.boundaries.boundary_surfaces)
-    if isinstance(scene, SceneTemperature):
-        blender_data += (scene.t_old,)
-    else:
-        blender_data += (None,)
+    if False:
+        blender_data_path = f"{final_catalog}/blender/data.blender"
+        
+        blender_data = (scene.boundary_nodes, scene.boundaries.boundary_surfaces)
+        if isinstance(scene, SceneTemperature):
+            blender_data += (scene.t_old,)
+        else:
+            blender_data += (None,)
 
-    for obs in scene.mesh_obstacles:
-        # TODO: Mesh obstacles and temperature - create dataclass
-        blender_data += (obs.boundary_nodes, obs.boundaries.boundary_surfaces)
+        for obs in scene.mesh_obstacles:
+            # TODO: Mesh obstacles and temperature - create dataclass
+            blender_data += (obs.boundary_nodes, obs.boundaries.boundary_surfaces)
 
-    pkh.append_data(data=blender_data, data_path=blender_data_path, lock=None)
+        pkh.append_data(data=blender_data, data_path=blender_data_path, lock=None)
 
     # Comparer
     if hasattr(scene, "reduced"):
@@ -235,19 +270,10 @@ def run_scenario(
     time_skip = config.print_skip
     ts = int(time_skip / scenario.time_step)
     plot_scenes_count = [0]
-    with_reduced = hasattr(scene, "reduced")
+    # with_reduced = hasattr(scene, "reduced")
     save_files = run_config.plot_animation or run_config.save_all
     save_animation = run_config.plot_animation
 
-    # if save_files:
-    if 'main_dir' in additional_args:
-        main_dir = additional_args['main_dir']
-    else:
-        main_dir = f"{config.output_catalog}/{config.current_time} - {run_config.catalog}"
-
-    final_catalog = f"{main_dir}/{scenario.name}/{scene.simulation_config.mode}"
-    # _{scene.mesh_prop.mesh_type}
-    
     step = [0]  # TODO: #65 Clean
 
     def operation_save(scene: Scene):
@@ -256,13 +282,13 @@ def run_scenario(
         plot_index = step[0] % ts == 0
         if "three" in config.animation_backend:
             plotter_functions.save_three(
-                scene=scene, step=step[0], folder=f"{final_catalog}/three"
+                scene=scene, step=step[0], folder=f"{run_config.final_catalog}/three", skip=10
             )
         if run_config.save_all or plot_index:
             # scenes_path_reduced = f"{final_catalog}/scenarios_reduced/{label}.scenes"
 
             save_scene(
-                scene=scene, final_catalog=final_catalog, save_animation=save_animation
+                scene=scene, final_catalog=run_config.final_catalog, save_animation=save_animation
             )
             # if with_reduced:
             #     cmh.create_folders(f"{final_catalog}/scenarios_reduced")
@@ -296,14 +322,14 @@ def run_scenario(
             plotter_functions.plot_scenario_animation(
                 scenario=scenario,
                 config=config,
-                animation_path=f"{final_catalog}/{scenario.name}.gif",
+                animation_path=f"{run_config.final_catalog}/{scenario.name}.gif",
                 time_skip=time_skip,
                 index_skip=ts if run_config.save_all else 1,
                 plot_scenes_count=plot_scenes_count[0],
-                all_scenes_path=final_catalog, ###
+                all_scenes_path=run_config.final_catalog, ###
             )
 
-    return scene, final_catalog
+    return scene
 
 
 def prepare(scenario, scene: Scene, current_time, with_temperature):
@@ -390,10 +416,10 @@ def simulate(
 
         with timer["reduced_solver"]:
             if "reduced_exact_accelerations" in additional_args:
-                print('Taking reduced acceleration')
+                # print('Taking reduced acceleration')
                 scene.reduced.exact_acceleration = additional_args['reduced_exact_accelerations'][step]
             else:
-                print('Calculating reduced acceleration')
+                # print('Calculating reduced acceleration')
                 scene.reduced.exact_acceleration, _ = Calculator.solve(
                     scene=scene.reduced,
                     energy_functions=energy_functions[1],

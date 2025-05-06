@@ -288,6 +288,26 @@ def get_newest_checkpoint_path_jax(config: TrainingConfig):
 
 
 def get_checkpoint_path(config: TrainingConfig=None):
+    ### Longer training examples
+    path = '/output/25.05.01-14.28.00 - JAX GRAPH MODELS/17464255545828 - EPOCH 23 - MODEL'
+    # path = '/output/25.05.01-14.28.00 - JAX GRAPH MODELS/17463273115004 - EPOCH 16 - MODEL'
+    # path = '/output/25.05.01-14.28.00 - JAX GRAPH MODELS/17462431605234 - EPOCH 10 - MODEL'
+    # path = '/output/25.05.01-14.28.00 - JAX GRAPH MODELS/17462011019684 - EPOCH 7 - MODEL'
+    # path = '/output/25.05.01-14.28.00 - JAX GRAPH MODELS/17461589058378 - EPOCH 4 - MODEL'
+    ### Fixed training data
+    # path = '/output/25.04.23-18.00.54 - JAX GRAPH MODELS/17459852938233 - EPOCH 43 - MODEL'
+    # path = '/output/25.04.23-18.00.54 - JAX GRAPH MODELS/17459008092399 - EPOCH 36 - MODEL'
+    # path = '/output/25.04.23-18.00.54 - JAX GRAPH MODELS/17457799327246 - EPOCH 26 - MODEL'
+    # path = '/output/25.04.23-18.00.54 - JAX GRAPH MODELS/17457317066645 - EPOCH 22 - MODEL'
+    # path =S '/output/25.04.23-18.00.54 - JAX GRAPH MODELS/17456954864402 - EPOCH 19 - MODEL'
+    # path ='/output/25.04.23-18.00.54 - JAX GRAPH MODELS/17456714615382 - EPOCH 17 - MODEL'
+    # path = '/output/25.04.23-18.00.54 - JAX GRAPH MODELS/17456473298535 - EPOCH 15 - MODEL'
+    # path = '/output/25.04.23-18.00.54 - JAX GRAPH MODELS/17456352313850 - EPOCH 14 - MODEL'
+    # path = '/output/25.04.23-18.00.54 - JAX GRAPH MODELS/17455869178494 - EPOCH 10 - MODEL'
+    # path = '/output/25.04.23-18.00.54 - JAX GRAPH MODELS/17455627442429 - EPOCH 8 - MODEL'
+    # path = '/output/25.04.23-18.00.54 - JAX GRAPH MODELS/17455143250332 - EPOCH 4 - MODEL'
+    # path = '/output/25.04.23-18.00.54 - JAX GRAPH MODELS/17454902142944 - EPOCH 2 - MODEL'
+    # path = '/output/25.04.23-18.00.54 - JAX GRAPH MODELS/17454781883695 - EPOCH 1 - MODEL'
     ### New data (larger range)
     # return '/home/michal/Desktop/conmech3d/output/MODELS NEW FEATURES NEW DATA/17442777618789 - EPOCH 16 - MODEL'
     ### Readded input displacement and velocity
@@ -296,11 +316,11 @@ def get_checkpoint_path(config: TrainingConfig=None):
     # return '/home/michal/Desktop/conmech3d/output/MODELS NEW FEATURES OLD DATA/17439274217021 - EPOCH 16 - MODEL'
     ### Simplified input, norm by current timestep
     # return '/home/michal/Desktop/conmech3d/output/25.03.29-14.23.40 - JAX GRAPH MODELS/17433991184666 - EPOCH 8 - MODEL'
-    path = '/output/25.03.29-14.23.40 - JAX GRAPH MODELS/17434958282739 - EPOCH 16 - MODEL'
+    # path = '/output/25.03.29-14.23.40 - JAX GRAPH MODELS/17434958282739 - EPOCH 16 - MODEL'
     # return '/home/michal/Desktop/conmech3d/output/25.03.29-14.23.40 - JAX GRAPH MODELS/17435684218629 - EPOCH 22 - MODEL'
     ### Longest run
     # return '/home/michal/Desktop/conmech3d/output/25.02.23-15.49.20 - JAX GRAPH MODELS/17405623655142 - EPOCH 16 - MODEL'
-    absolute_path = '/home/mjureczka/Desktop/conmech3d' + path
+    absolute_path = '/home/michal/Desktop/conmech3d' + path
     return absolute_path
 
 def main(args: Namespace):

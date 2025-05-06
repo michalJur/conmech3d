@@ -789,61 +789,7 @@ def bunny_swing_3d(
     )
 
 
-def bunny_obstacles(
-    mesh_density: int,
-    final_time: float,
-    simulation_config: SimulationConfig,
-    scale=1,
-    tag="",
-    arg=1.0,
-    scale_forces=1.0,
-    name="bunny_obstacles",
-):
-    _, _, _ = scale, tag, arg
-    obstacle_meshes = []
-    for i in range(1, 4):
-        if i % 2 == 1:
-            shift = 0
-            mesh_type = "slide_left"
-        else:
-            shift = -1.5
-            mesh_type = "slide_right"
-        obstacle_meshes.append(
-            MeshProperties(
-                dimension=3,
-                mesh_type=mesh_type,
-                scale=[1],
-                mesh_density=[16],
-                initial_position=[0, shift, -1.6 * i],
-            )
-        )
-
-def bunny_slide(
-    mesh_density: int,
-    final_time: float,
-    simulation_config: SimulationConfig,
-    scale=1,
-    tag="",
-    arg=1.0,
-    scale_forces=1.0,
-    name="bunny_slide",
-):
-    _, _, _ = scale, tag, arg
-    obstacle_meshes = []
-    for i in range(1, 6):
-        mesh_type = "slide_left"
-        shift = (i-1) * -1.5
-        obstacle_meshes.append(
-            MeshProperties(
-                dimension=3,
-                mesh_type=mesh_type,
-                scale=[1],
-                mesh_density=[16],
-                initial_position=[0, shift, -1.5 * i],
-                slope=45
-            )
-        )
-
+def _return_base_compare(name, mesh_density, final_time, simulation_config, scale_forces, obstacle_meshes):
     return Scenario(
         name=name,
         mesh_prop=MeshProperties(
@@ -859,11 +805,98 @@ def bunny_slide(
             geometry=None,
             properties=ObstacleProperties(
                 hardness=100.0, friction=2.0
-            ),  # 100 5.0 # 1000
+            ),
             all_mesh=obstacle_meshes,
         ),
         simulation_config=simulation_config,
     )
+
+def bunny_pingpong(
+    simulation_config: SimulationConfig,
+    mesh_density: int,
+    final_time=12.01,
+    scale=1,
+    tag="",
+    arg=1.0,
+    scale_forces=5.0,
+    name="bunny_pingpong",
+):
+    _, _, _ = scale, tag, arg
+    obstacle_meshes = []
+    for i in range(1, 5):
+        if i % 2 == 1:
+            shift = 0
+            mesh_type = "slide_left"
+        else:
+            shift = -1.5
+            mesh_type = "slide_right"
+        obstacle_meshes.append(
+            MeshProperties(
+                dimension=3,
+                mesh_type=mesh_type,
+                scale=[1],
+                mesh_density=[16],
+                initial_position=[0, shift, -1.6 * i],
+                slope=30
+            )
+        )
+    return _return_base_compare(name=name, mesh_density=mesh_density, final_time=final_time, simulation_config=simulation_config, scale_forces=scale_forces, obstacle_meshes=obstacle_meshes)
+
+
+def bunny_slide(
+    simulation_config: SimulationConfig,
+    mesh_density: int,
+    final_time=8.01,
+    scale=1,
+    tag="",
+    arg=1.0,
+    scale_forces=5.0,
+    name="bunny_slide",
+):
+    _, _, _ = scale, tag, arg
+    obstacle_meshes = []
+    for i in range(1, 6):
+        mesh_type = "slide_right"
+        obstacle_meshes.append(
+            MeshProperties(
+                dimension=3,
+                mesh_type=mesh_type,
+                scale=[1],
+                mesh_density=[16],
+                initial_position=[0, (i-1) * 1.5, -1.5 * i],
+                slope=20
+            )
+        )
+    return _return_base_compare(name=name, mesh_density=mesh_density, final_time=final_time, simulation_config=simulation_config, scale_forces=scale_forces, obstacle_meshes=obstacle_meshes)
+
+def bunny_chute(
+    simulation_config: SimulationConfig,
+    mesh_density: int,
+    final_time=8.01,
+    scale=1,
+    tag="",
+    arg=1.0,
+    scale_forces=3.0,#5.0,
+    name="bunny_chute",
+):
+    _, _, _ = scale, tag, arg
+    obstacle_meshes = []
+    skip = -1.5
+    for i in range(1, 6):
+        skip += 1.5 + 0.5 * (i-1)
+        mesh_type = "slide_front"
+        obstacle_meshes.append(
+            MeshProperties(
+                dimension=3,
+                mesh_type=mesh_type,
+                scale=[1],
+                mesh_density=[16],
+                initial_position=[skip, 0, -2.0 * i],
+                slope=(45 - (i-1) * 10)
+            )
+        )
+    return _return_base_compare(name=name, mesh_density=mesh_density, final_time=final_time, simulation_config=simulation_config, scale_forces=scale_forces, obstacle_meshes=obstacle_meshes)
+
 
 
 def get_train_data(**args):
@@ -1005,7 +1038,7 @@ def all_validation(td, sc):
                 )
             ],
             [
-                bunny_obstacles(
+                bunny_pingpong(
                     mesh_density=td.mesh_density,
                     scale=1,
                     final_time=4.0,  # 8.0,
@@ -1027,61 +1060,59 @@ def all_validation(td, sc):
 
 
 def all_compare(td, sc):
-    final_time = 4.0
+    final_time = 8.01
     return [
-            bunny_slide(
-                mesh_density=td.mesh_density,
-                scale=1,
-                final_time=2.0, #8.0,
-                simulation_config=sc,
-                scale_forces=2.5,#5.0,
-            )
-        ]
-    return [
-                bunny_obstacles(
+                bunny_chute(
                     mesh_density=td.mesh_density,
                     final_time=final_time,
                     simulation_config=sc,
-                    scale_forces=5.0,
-                    name="bunny_obstacles_f5",
                 ),
-                bunny_obstacles(
+                bunny_slide(
                     mesh_density=td.mesh_density,
                     final_time=final_time,
                     simulation_config=sc,
-                    scale_forces=2.0,
-                    name="bunny_obstacles_f2",
                 ),
-                ###
-                bunny_fall(
+                bunny_pingpong(
                     mesh_density=td.mesh_density,
-                    final_time=final_time,
                     simulation_config=sc,
-                    scale_forces=5.0,
-                    name="bunny_fall_f5",
                 ),
-                bunny_fall(
-                    mesh_density=td.mesh_density,
-                    final_time=final_time,
-                    simulation_config=sc,
-                    scale_forces=2.0,
-                    name="bunny_fall_f2",
-                ),
-                ###
-                bunny_push(
-                    mesh_density=td.mesh_density,
-                    final_time=final_time,
-                    simulation_config=sc,
-                    scale_forces=5.0,
-                    name="bunny_push_f5",
-                ),
-                bunny_push(
-                    mesh_density=td.mesh_density,
-                    final_time=final_time,
-                    simulation_config=sc,
-                    scale_forces=2.0,
-                    name="bunny_push_f2",
-                )
+                # bunny_obstacles(
+                #     mesh_density=td.mesh_density,
+                #     final_time=final_time,
+                #     simulation_config=sc,
+                #     scale_forces=2.0,
+                #     name="bunny_obstacles_f2",
+                # ),
+                # ###
+                # bunny_fall(
+                #     mesh_density=td.mesh_density,
+                #     final_time=final_time,
+                #     simulation_config=sc,
+                #     scale_forces=5.0,
+                #     name="bunny_fall_f5",
+                # ),
+                # bunny_fall(
+                #     mesh_density=td.mesh_density,
+                #     final_time=final_time,
+                #     simulation_config=sc,
+                #     scale_forces=2.0,
+                #     name="bunny_fall_f2",
+                # ),
+                # ###
+                # bunny_push(
+                #     mesh_density=td.mesh_density,
+                #     final_time=final_time,
+                #     simulation_config=sc,
+                #     scale_forces=5.0,
+                #     name="bunny_push_f5",
+                # ),
+                # bunny_push(
+                #     mesh_density=td.mesh_density,
+                #     final_time=final_time,
+                #     simulation_config=sc,
+                #     scale_forces=2.0,
+                #     name="bunny_push_f2",
+                # )
             ]
     
 
