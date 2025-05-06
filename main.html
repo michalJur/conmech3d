@@ -459,12 +459,12 @@ Based on code by Matthias Müller - Ten Minute Physics, https://www.youtube.com/
             // scene.add(arrowHelper);
 
             // Create an obstacle plane perpendicular to the arrow
-            const planeSize = 2;
+            const planeSize = 20;
             const planeGeometry = new THREE.PlaneGeometry(planeSize, planeSize);
             const planeMaterial = new THREE.MeshStandardMaterial({ 
                 color: obstacleColor,
                 transparent: true,
-                opacity: 0.9,
+                opacity: 0.5,
                 side: THREE.DoubleSide
             });
             const obstaclePlane = new THREE.Mesh(planeGeometry, planeMaterial);
@@ -483,7 +483,7 @@ Based on code by Matthias Müller - Ten Minute Physics, https://www.youtube.com/
             obstaclePlane.setRotationFromMatrix(normalMatrix);
             
             obstaclePlane.name = "obstaclePlane";
-            // scene.add(obstaclePlane);
+            scene.add(obstaclePlane);
 
             // Create ground plane with a solid beige color
             const groundGeometry = new THREE.PlaneGeometry(10000, 10000); // Effectively infinite ground
