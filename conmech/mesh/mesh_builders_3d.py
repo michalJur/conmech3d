@@ -132,6 +132,24 @@ def get_pygmsh_slide(mesh_prop):
                     [-width, depth, -height],
                 ]
             )
+        elif "front" in mesh_prop.mesh_type:
+            poly = geom.add_polygon(
+                [
+                    [-width, -depth, height],
+                    [width, -depth, -height],
+                    [width, depth, -height],
+                    [-width, depth, height],
+                ]
+            )
+        elif "back" in mesh_prop.mesh_type:
+            poly = geom.add_polygon(
+                [
+                    [-width, -depth, -height],
+                    [width, -depth, height],
+                    [width, depth, height],
+                    [-width, depth, -height],
+                ]
+            )
         elif "up" in mesh_prop.mesh_type:
             poly = geom.add_polygon(
                 [

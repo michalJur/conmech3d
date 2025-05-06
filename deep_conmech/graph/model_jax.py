@@ -498,8 +498,8 @@ def solve( ###
                 initial_a=scene.reduced.lifted_acceleration,  # scene.reduced.exact_acceleration, #initial_reduced,
                 timer=timer,
             )
-    else:
-        print("Taking prepared reduced acceleration")
+    # else:
+        # print("Taking prepared reduced acceleration")
 
     device_number = 0  # using GPU 0
 
@@ -521,7 +521,7 @@ def solve( ###
         scene.norm_lifted_new_displacement = apply_net(args) / SCALE
 
     with timer["jax_translation"]:
-        print('Using recenter_by_new_reduced')
+        # print('Using recenter_by_new_reduced')
         scene.recentered_norm_lifted_new_displacement = scene.recenter_by_new_reduced(
             new_displacement=scene.norm_lifted_new_displacement, reduced_exact_acceleration=scene.reduced.exact_acceleration
         )

@@ -167,8 +167,8 @@ class Calculator:
                     initial_a=scene.reduced.exact_acceleration,
                     timer=timer,
                 )
-        else:
-            print("Taking prepared reduced acceleration")
+        # else:
+            # print("Taking prepared reduced acceleration")
 
         with timer["lower_data"]:
             scene.exact_acceleration = np.array(
