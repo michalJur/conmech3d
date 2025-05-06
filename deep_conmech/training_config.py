@@ -117,7 +117,7 @@ def get_train_config(shell, mode):
         use_constant_contact_integral=False,  # True,  # False, ##############
         use_lhs_preconditioner=False,
         with_self_collisions=True,
-        mesh_layer_proportion=4,  # 2 4
+        mesh_layer_proportion=2,  # 2 4
         mode=mode,
     )
     return config

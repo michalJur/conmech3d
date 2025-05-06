@@ -87,6 +87,8 @@ class FeaturesStatistics:
         self._mean_ready = False
 
     def set_mean_and_max_abs(self, new_data):
+        if new_data is None:
+            return
         self.max_abs = get_max_abs(old_max=self.max_abs, new_data=new_data)
         self.mean = get_mean(old_mean=self.mean, old_size=self.size, new_data=new_data)
         self.size += len(new_data)
@@ -96,6 +98,8 @@ class FeaturesStatistics:
         self.size = 0
 
     def set_variance(self, new_data):
+        if new_data is None:
+            return
         assert self._mean_ready
         self.var = get_variance(
             old_variance=self.var,
@@ -106,4 +110,6 @@ class FeaturesStatistics:
         self.size += len(new_data)
 
     def finalize_variance(self):
+        if self.var is None:
+            return
         self.std = self.var.sqrt()

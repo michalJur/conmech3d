@@ -85,7 +85,7 @@ class MessagePassingJax(nn.Module):
     ):
         senders, receivers = edge_index
         node_latents_senders = node_latents_from.at[senders].get()
-        node_latents_receivers = node_latents_to.at[receivers].get()
+        node_latents_receivers = node_latents_to.at[receivers].get() if node_latents_to is not None else None
 
         edge_inputs = self.get_edge_inputs(
             node_latents_senders, node_latents_receivers, edge_latents
@@ -166,7 +166,7 @@ class ProcessorLayer(MessagePassingJax):
         return aggregated_edge_latents
 
     def update(self, node_latents_to, aggregated_edge_latents):
-        node_inputs = jnp.hstack((node_latents_to, aggregated_edge_latents))
+        node_inputs = jnp.hstack((aggregated_edge_latents, node_latents_to))
         new_node_latents = node_latents_to + ForwardNet(
             latent_dimension=self.latent_dimension,
             internal_layer_count=self.internal_layer_count,
@@ -199,9 +199,14 @@ class LinkProcessorLayer(MessagePassingJax):
     def get_edge_inputs(
         self, node_latents_senders, node_latents_receivers, edge_latents
     ):
-        edge_inputs = jnp.hstack(
-            (node_latents_senders, edge_latents, node_latents_receivers)
-        )
+        if node_latents_receivers is None:
+            edge_inputs = jnp.hstack(
+                (node_latents_senders, edge_latents)
+            )
+        else:
+            edge_inputs = jnp.hstack(
+                (node_latents_senders, edge_latents, node_latents_receivers)
+            )
         return edge_inputs
 
     def message(self, edge_inputs):
@@ -219,11 +224,14 @@ class LinkProcessorLayer(MessagePassingJax):
         return result
 
     def update(self, node_latents_to, aggregated_edge_latents):
-        _ = node_latents_to
+        if node_latents_to is None:
+            node_inputs = aggregated_edge_latents
+        else:
+            node_inputs = jnp.hstack((aggregated_edge_latents, node_latents_to))
         linked_node_latents = ForwardNet(
             latent_dimension=self.latent_dimension,
             internal_layer_count=self.internal_layer_count,
-        )(aggregated_edge_latents, train=self.train)
+        )(node_inputs, train=self.train)
         return linked_node_latents  # jnp.hstack((node_latents_to, linked_node_latents))
 
 
@@ -288,6 +296,8 @@ class CustomGraphNetJax(nn.Module):
             return updated_node_latents_dense
 
         def get_data_norm(label, data):
+            if data is None:
+                return None
             return DataNorm(
                 mean_init=lambda _: jnp.array(self.statistics[label].mean),
                 std_init=lambda _: jnp.array(self.statistics[label].std),
@@ -319,11 +329,14 @@ class CustomGraphNetJax(nn.Module):
             input_batch_norm=input_batch_norm,
         )(edge_data_multilayer, train=train)
 
-        node_latents_dense = ForwardNet(
-            latent_dimension=latent_dimension,
-            internal_layer_count=internal_layer_count,
-            input_batch_norm=input_batch_norm,
-        )(node_data_dense, train=train)
+        if node_data_dense is None:
+            node_latents_dense = None
+        else:
+            node_latents_dense = ForwardNet(
+                latent_dimension=latent_dimension,
+                internal_layer_count=internal_layer_count,
+                input_batch_norm=input_batch_norm,
+            )(node_data_dense, train=train)
 
         edge_latents_dense = ForwardNet(
             latent_dimension=latent_dimension,

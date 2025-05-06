@@ -17,6 +17,8 @@ def convert_jax_to_tensor(x):
 
 
 def convert_jax_to_tensor_set_precision(x):
+    if x is None:
+        return None
     return set_precision(convert_jax_to_tensor(x))
 
 

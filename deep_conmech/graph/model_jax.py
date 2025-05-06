@@ -455,7 +455,7 @@ def sync_batch_stats(states):
 
 def convert_to_jax(layer_list, target_data=None):
     for layer in layer_list:
-        layer["x"] = thh.convert_tensor_to_jax(layer["x"])
+        layer["x"] = thh.convert_tensor_to_jax(layer["x"]) if 'x' in layer else None
         layer.edge_attr = thh.convert_tensor_to_jax(layer.edge_attr)
         layer.edge_index = thh.convert_tensor_to_jax(layer.edge_index)
 
@@ -535,7 +535,8 @@ def solve( ###
 
 def prepare_input(layer_list):
     def unpack(layer):
-        return layer["x"], layer.edge_attr, layer.edge_index
+        layer_x = layer["x"] if 'x' in layer else None 
+        return layer_x, layer.edge_attr, layer.edge_index
 
     layer_dense = layer_list[0]
     layer_sparse = layer_list[1]

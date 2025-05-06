@@ -166,7 +166,7 @@ class SceneInput(SceneRandomized):
                 # )
                 return jnp.hstack(
                     (
-                        input_initial_nodes,
+                        # input_initial_nodes,
                         new_displacement,
                         # linear_acceleration,
                         # boundary_normals,
@@ -191,14 +191,15 @@ class SceneInput(SceneRandomized):
                 #     randomization = get_random(scale= (scene.time_step**2))
                 #     new_randomized_displacement += randomization
 
-                return jnp.hstack(
+                return None
+                jnp.hstack(
                     # TODO: Add previous accelerations
                     (
-                        input_initial_nodes,
+                        # input_initial_nodes,
                         # prepare_nodes(new_randomized_displacement),
                         # new_lowered_displacement,
                         # linear_acceleration,
-                        # 0 * boundary_normals,
+                        0 * boundary_normals,
                         # boundary_friction,
                         # boundary_normal_response,
                         # boundary_volume,
