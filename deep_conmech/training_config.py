@@ -20,7 +20,7 @@ class TrainingData:
     print_scale: int = 1
 
     dataset: str = "calculator"  # synthetic # calculator
-    final_time: float = 7.01  # 2
+    final_time: float = 6.01  # 2
     mesh_density: int = 32
     adaptive_training_mesh_scale: Optional[float] = 0.0  # 0.8  # 0.1
 
@@ -116,8 +116,8 @@ def get_train_config(shell, mode):
         use_nonconvex_friction_law=False,
         use_constant_contact_integral=False,  # True,  # False, ##############
         use_lhs_preconditioner=False,
-        with_self_collisions=True,
-        mesh_layer_proportion=2,  # 2 4
+        with_self_collisions=False, #True,
+        mesh_layer_proportion=4,  # 2 4
         mode=mode,
     )
     return config

@@ -193,6 +193,7 @@ M_BALL_3D = "meshzoo_ball_3d"
 M_POLYGON_3D = "pygmsh_polygon_3d"
 M_TWIST_3D = "pygmsh_twist_3d"
 M_BUNNY_3D = "pygmsh_bunny_3d"
+M_SPHERE_3D = "pygmsh_sphere_3d"
 M_BUNNY_3D_LIFTED = "pygmsh_bunny_3d_lifted"
 M_ARMADILLO_3D = "pygmsh_armadillo_3d"
 
@@ -941,7 +942,7 @@ def all_train(td, sc):
     # distance = 1.1  # 1.2 # 0.7
     # slope = 45
     
-
+    bunny = True
     for forces_dim in [0, 1, 2]:
         for forces_dir in [-1.0, 1.0]:
             for scale_forces in [1.0, 2.5, 5.0]:
@@ -964,8 +965,14 @@ def all_train(td, sc):
                             sloped = (forces_dim + normals_dim_plus) % 3
                             normal[sloped] = np.sin(np.abs(slope_rad)) * np.float64(np.sign(slope_rad))
                         normal = normal / np.linalg.norm(normal)
-
-                        name = f"bunny_train-force:{force}_distance:{distance}_sloped:{sloped}_slope:{slope}"
+                        
+                        if bunny:
+                            body_mesh = "bunny"
+                        else:
+                            body_mesh = "sphere"
+                        bunny = not bunny
+                        name = f"{body_mesh}_train-force:{force}_distance:{distance}_sloped:{sloped}_slope:{slope}"
+                        
                         if name not in args:
                             args.append(
                                 {
@@ -975,37 +982,44 @@ def all_train(td, sc):
                                     "name": name,
                                 }
                             )
-    args.sort(key=lambda x: x["name"])
     data = []
-    data.extend(
-        [
-            Scenario(
-                name=arg["name"],
-                mesh_prop=MeshProperties(
-                    dimension=3,
-                    mesh_type=M_BUNNY_3D,
-                    scale=[1],
-                    mesh_density=[td.mesh_density],
-                ),
-                body_prop=default_body_prop_3d,
-                schedule=Schedule(final_time=final_time),
-                forces_function=arg["force"],
-                obstacle=Obstacle(
-                    np.array(
-                        [
-                            [arg["normal"]],
-                            [arg["position"]],
-                        ]
+    for arg in args:
+        mesh_type = M_BUNNY_3D if 'bunny' in arg["name"] else M_SPHERE_3D
+        data.append(Scenario(
+                    name=arg["name"],
+                    mesh_prop=MeshProperties(
+                        dimension=3,
+                        mesh_type=mesh_type,
+                        scale=[1],
+                        mesh_density=[td.mesh_density],
                     ),
-                    ObstacleProperties(hardness=hardness, friction=friction),
-                ),
-                simulation_config=sc,
-            )
-            for arg in args
-            # bunny_fall_3d(**args, arg=arg, scale_forces=scale_forces)
-            # for (arg, scale_forces) in [(-0.7, 1.0), (0.8, 6.0), (1.2, 2.0), (-0.5, 4.0)]
-        ]
-    )
+                    body_prop=default_body_prop_3d,
+                    schedule=Schedule(final_time=final_time),
+                    forces_function=arg["force"],
+                    obstacle=Obstacle(
+                        np.array(
+                            [
+                                [arg["normal"]],
+                                [arg["position"]],
+                            ]
+                        ),
+                        ObstacleProperties(hardness=hardness, friction=friction),
+                    ),
+                    simulation_config=sc,
+                )
+                
+                # bunny_fall_3d(**args, arg=arg, scale_forces=scale_forces)
+                # for (arg, scale_forces) in [(-0.7, 1.0), (0.8, 6.0), (1.2, 2.0), (-0.5, 4.0)]
+        )
+
+    data.extend([
+        bunny_slide(
+            mesh_density=td.mesh_density,
+            final_time=final_time,
+            simulation_config=sc,
+        )])
+    data.sort(key=lambda x: x.name)
+    
     # data.extend(
     #     [
     #         bunny_rotate_3d(**args, arg=arg, scale_forces=scale_forces)

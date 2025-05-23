@@ -1,10 +1,12 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 from datetime import datetime
 import os
 from pathlib import Path
 import pickle
 import numpy as np
 import pandas as pd
-from dotenv import load_dotenv
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 # import seaborn as sns
@@ -24,8 +26,6 @@ import json
 # check difference between exact and lifted in plotted data
 
 def main():
-    load_dotenv()
-      
     base_mode = "normal_with_reduced"
     other_modes = [
         # "pca",

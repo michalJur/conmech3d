@@ -4,6 +4,8 @@ import meshio
 import meshzoo
 import numpy as np
 import pygmsh
+import pyvista as pv
+import tetgen
 
 from conmech.helpers import cmh, nph
 from conmech.mesh import mesh_builders_helpers
@@ -179,6 +181,60 @@ def get_pygmsh_slide(mesh_prop):
             geom, dimension=3
         )
     return nodes, elements
+
+
+
+def get_pygmsh_sphere(mesh_prop: MeshProperties, lifted=False):
+    assert lifted is False
+    radius=0.4
+    if mesh_prop.mesh_density_x == 32:
+        mesh_size=0.021
+    elif mesh_prop.mesh_density_x == 8:
+        mesh_size=0.09
+    center=(0, 0, 0)
+    with pygmsh.occ.Geometry() as geom:
+        # Add a sphere
+        
+        sphere = geom.add_ball(
+            center=center,
+            radius=radius,
+            mesh_size=mesh_size
+        )
+        
+        # Generate mesh with cell sets
+        # mesh = geom.generate_mesh()
+    
+        # geom.set_mesh_size_callback(
+        #     mesh_builders_helpers.get_mesh_size_callback(mesh_prop)
+        # )
+        nodes, elements = mesh_builders_helpers.get_nodes_and_elements(
+            geom, 3
+        )
+    return nodes, elements
+
+def get_pyvista_sphere(mesh_prop, lifted=False):
+    assert lifted is False
+    if mesh_prop.mesh_density_x == 32:
+        resolution = 100
+    elif mesh_prop.mesh_density_x == 8:
+        resolution = 19
+    else:
+        raise ArgumentError
+    sphere = pv.Sphere(radius=0.5, theta_resolution=resolution, phi_resolution=resolution)
+    # grid = sphere.delaunay_3d()
+    tet = tetgen.TetGen(sphere)
+    tet.tetrahedralize(order=1, mindihedral=20, minratio=1.5, plc=1)
+    grid = tet.grid
+    # grid = pv.SolidSphere()
+
+    del sphere
+    del tet
+    
+    nodes = np.array(grid.points, dtype=np.float64)
+    elements = np.array(grid.cells.reshape(-1, 5)[:, 1:], dtype=np.int64)
+    
+    return nodes, elements
+
 
 
 def get_pygmsh_bunny(mesh_prop, lifted=False):
