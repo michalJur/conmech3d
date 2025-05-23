@@ -1,18 +1,13 @@
 from dotenv import load_dotenv
 load_dotenv()
 
-from datetime import datetime
 import os
 from pathlib import Path
 import pickle
 import numpy as np
-import pandas as pd
-from tqdm import tqdm
 import matplotlib.pyplot as plt
-# import seaborn as sns
 
 from conmech.helpers import cmh
-from conmech.helpers.config import Config
 from conmech.scenarios import scenarios
 from conmech.simulations import simulation_runner
 from deep_conmech.graph.model_jax import RMSE
@@ -26,15 +21,19 @@ import json
 # check difference between exact and lifted in plotted data
 
 def main():
+      
     base_mode = "normal_with_reduced"
     other_modes = [
         # "pca",
         "skinning",
         "net",
     ]
-    num_runs = 3 # 1 3  # Number of times to run each scenario
+    num_runs = 1 # 1 3  # Number of times to run each scenario
 
-    copy_dir = '/home/michal/Desktop/conmech3d/output/BASE'
+    # copy_dir = None
+    # copy_dir = '/home/michal/Desktop/conmech3d/output/25.05.14-00.01.24 - (17459852938233 - EPOCH 43 - MODEL) - compare'
+    copy_dir = '/home/michal/Desktop/conmech3d/output/BASE32'
+    # copy_dir = '/home/michal/Desktop/conmech3d/output/BASE64'
 
     config = get_train_config(shell=False, mode=None)
     checkpoint_path = get_checkpoint_path(config=config)
@@ -55,6 +54,10 @@ def main():
 def copy_previous_results(copy_dir, main_dir):
     """Copy all previous simulation results from copy_dir to main_dir."""
     if copy_dir and Path(copy_dir).exists():
+        print("Removing 'net' folder")
+        for net_folder in Path(copy_dir).glob('**/*net*'):
+            cmh.clear_folder(str(net_folder))
+                
         print(f"Copying previous results from {copy_dir}")
         cmh.copy_folder(copy_dir, main_dir)
     else:
@@ -81,7 +84,10 @@ def run_single_scenario_single_mode(scenario, config, mode, additional_args = {}
     final_catalog = get_final_catalog(scenario, config, mode, additional_args)
     
     # Skip if results already exist
-    if Path(final_catalog).exists():
+    if 'net' in final_catalog:
+        print("Removing net folder")
+        cmh.clear_folder(final_catalog)
+    elif Path(final_catalog).exists():
         print(f"Skipping {mode} for {scenario.name} - results already exist")
         return final_catalog
     
@@ -119,9 +125,9 @@ def run_all_simulations(main_dir, copy_dir, base_mode, other_modes, config, num_
         copy_previous_results(copy_dir, main_dir)
     
     all_scenarios = scenarios.all_compare(config.td, config.sc)
-    for scenario in all_scenarios:
-        main_scenario_name = scenario.name
-        for run_idx in range(num_runs):
+    for run_idx in range(num_runs):
+        for scenario in all_scenarios:
+            main_scenario_name = scenario.name
             scenario.name = f"{main_scenario_name}_run{run_idx+1}"
             print(f"Running scenario: {scenario.name}")
             run_single_scenario(
@@ -131,6 +137,7 @@ def run_all_simulations(main_dir, copy_dir, base_mode, other_modes, config, num_
                 other_modes=other_modes,
                 config=config
             )
+            scenario.name = main_scenario_name
             print("Creating report...")
             create_report(main_dir=main_dir, base_mode=base_mode, other_modes=other_modes)
 

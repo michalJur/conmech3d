@@ -32,11 +32,11 @@
     "python.formatting.provider": "none",
     "nvidia-smi-plus.refresh.autoRefresh": true,
     "workbench.colorCustomizations": {
-        "commandCenter.border": "#15202b99",
-        "titleBar.activeBackground": "#74b8e0",
-        "titleBar.activeForeground": "#15202b",
-        "titleBar.inactiveBackground": "#74b8e099",
-        "titleBar.inactiveForeground": "#15202b99"
+        "commandCenter.border": "#e7e7e799",
+        "titleBar.activeBackground": "#787a8a",
+        "titleBar.activeForeground": "#e7e7e7",
+        "titleBar.inactiveBackground": "#787a8a99",
+        "titleBar.inactiveForeground": "#e7e7e799"
     },
-    "peacock.remoteColor": "#74b8e0"
+    "peacock.remoteColor": "#787a8a"
 }

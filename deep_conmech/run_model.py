@@ -261,8 +261,21 @@ def get_newest_checkpoint_path_jax(config: TrainingConfig):
 
 
 def get_checkpoint_path(config: TrainingConfig=None):
-    ### Longer training examples
-    path = '/output/25.05.01-14.28.00 - JAX GRAPH MODELS/17464255545828 - EPOCH 23 - MODEL'
+    ### Bunny and sphere in training, added slide scenario (?)
+    path = '/output/25.05.17-15.40.33 - JAX GRAPH MODELS/17476930222762 - EPOCH 19 - MODEL'
+    # path = '/output/25.05.17-15.40.33 - JAX GRAPH MODELS/17475248307028 - EPOCH 1 - MODEL'
+    ### Sphere in training, no self collisions
+    # path = '/output/25.05.15-08.21.41 - JAX GRAPH MODELS/17474288569620 - EPOCH 15 - MODEL'
+    # path = '/output/25.05.15-08.21.41 - JAX GRAPH MODELS/17473225290601 - EPOCH 2 - MODEL'
+    # path = '/output/25.05.15-08.21.41 - JAX GRAPH MODELS/17473797451665 - EPOCH 9 - MODEL'
+    # path = '/output/25.05.15-08.21.41 - JAX GRAPH MODELS/17473225290601 - EPOCH 2 - MODEL'
+    # path = '/output/25.05.15-08.21.41 - JAX GRAPH MODELS/17473143989471 - EPOCH 1 - MODEL'
+    ### Denser fine mesh - density proportion 4->2 (final time 6), refactored node features (?)
+    # path = '/output/25.05.06-21.25.33 - JAX GRAPH MODELS/17470487201675 - EPOCH 21 - MODEL'
+    # path = '/output/25.05.06-21.25.33 - JAX GRAPH MODELS/17466828441649 - EPOCH 5 - MODEL'
+    # path = '/output/25.05.06-21.25.33 - JAX GRAPH MODELS/17466312998837 - EPOCH 1 - MODEL'
+    ### Longer training examples (final time 7)
+    # path = '/output/25.05.01-14.28.00 - JAX GRAPH MODELS/17464255545828 - EPOCH 23 - MODEL'
     # path = '/output/25.05.01-14.28.00 - JAX GRAPH MODELS/17463273115004 - EPOCH 16 - MODEL'
     # path = '/output/25.05.01-14.28.00 - JAX GRAPH MODELS/17462431605234 - EPOCH 10 - MODEL'
     # path = '/output/25.05.01-14.28.00 - JAX GRAPH MODELS/17462011019684 - EPOCH 7 - MODEL'
@@ -272,7 +285,7 @@ def get_checkpoint_path(config: TrainingConfig=None):
     # path = '/output/25.04.23-18.00.54 - JAX GRAPH MODELS/17459008092399 - EPOCH 36 - MODEL'
     # path = '/output/25.04.23-18.00.54 - JAX GRAPH MODELS/17457799327246 - EPOCH 26 - MODEL'
     # path = '/output/25.04.23-18.00.54 - JAX GRAPH MODELS/17457317066645 - EPOCH 22 - MODEL'
-    # path =S '/output/25.04.23-18.00.54 - JAX GRAPH MODELS/17456954864402 - EPOCH 19 - MODEL'
+    # path = '/output/25.04.23-18.00.54 - JAX GRAPH MODELS/17456954864402 - EPOCH 19 - MODEL'
     # path ='/output/25.04.23-18.00.54 - JAX GRAPH MODELS/17456714615382 - EPOCH 17 - MODEL'
     # path = '/output/25.04.23-18.00.54 - JAX GRAPH MODELS/17456473298535 - EPOCH 15 - MODEL'
     # path = '/output/25.04.23-18.00.54 - JAX GRAPH MODELS/17456352313850 - EPOCH 14 - MODEL'

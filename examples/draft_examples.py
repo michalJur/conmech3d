@@ -18,7 +18,7 @@ from conmech.scenarios.scenarios import (
     Scenario,
     all_train,
     bunny_fall,
-    bunny_pingpong,
+    pingpong,
     bunny_rotate_3d,
     default_body_prop,
     default_obstacle_prop,
