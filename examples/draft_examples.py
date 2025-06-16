@@ -41,7 +41,6 @@ def main():
             use_constant_contact_integral=False,
             use_lhs_preconditioner=False,
             with_self_collisions=True,
-            mesh_layer_proportion=4,
             mode=mode,
         )
 

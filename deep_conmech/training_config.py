@@ -10,6 +10,9 @@ DIMENSION = 3
 CLOSEST_COUNT = 4  # 3 4
 CLOSEST_BOUNDARY_COUNT = CLOSEST_COUNT - 1
 
+RECREATE_TRAINING_DATA = False
+GRAD_ACCUM_STEPS = 32
+
 
 @dataclass
 class TrainingData:
@@ -20,7 +23,7 @@ class TrainingData:
     print_scale: int = 1
 
     dataset: str = "calculator"  # synthetic # calculator
-    final_time: float = 6.01  # 2
+    # final_time: float = 6.01  # 2
     mesh_density: int = 32
     adaptive_training_mesh_scale: Optional[float] = 0.0  # 0.8  # 0.1
 
@@ -42,7 +45,7 @@ class TrainingData:
     velocity_in_random_factor: float = displacement_in_random_factor * 100.0
     # 0.005 * velocity_random_scale
 
-    raport_at_examples: int = 256 * 64 // 4
+    raport_at_examples: int = 256 #* 64 // #4
     save_at_epochs: int = 1
     validate_at_epochs: int = 5 # 3
     validate_scenarios_at_epochs: Optional[int] = None  # 30  # None 3
@@ -50,7 +53,7 @@ class TrainingData:
     batch_size: int = 1  # 4  # 8  # 1  # 16  # 32  # 16  # 32 # 256
     dataset_size: int = 32  # 256 * (1 if TEST else 1) #8)  # 2048)
 
-    use_dataset_statistics: bool = True
+    use_dataset_statistics: bool = False # #True
     input_batch_norm: bool = False
     internal_batch_norm: bool = False
     layer_norm: bool = False  # TODO: Test
@@ -61,16 +64,16 @@ class TrainingData:
 
     attention_heads_count: Optional[int] = None  # None 1 3 5
 
-    initial_learning_rate: float = 1e-4  # 1e-4  # 1e-3  # 1e-3  # 1e-4 # 1e-5
+    initial_learning_rate: float = 2 * 1e-5 # 1e-4  # 1e-3  # 1e-3  # 1e-4 # 1e-5
     learning_rate_decay: float = 1.0  # 0.995
     final_learning_rate: float = initial_learning_rate  # 1e-6
 
-    activation = nn.ReLU()  # PReLU LeakyReLU
-    latent_dimension: int = 64  # 128
-    encoder_layers_count: int = 0  # 3
-    processor_layers_count: int = 0
-    decoder_layers_count: int = 0  # 3
-    message_passes: int = 4  #  8 10  3
+    # activation = nn.ReLU()  # PReLU LeakyReLU
+    # latent_dimension: int = 64  # 128
+    # encoder_layers_count: int = 0  # 3
+    # processor_layers_count: int = 0
+    # decoder_layers_count: int = 0  # 3
+    # message_passes: int = 4  #  8 10  3
 
 
 @dataclass
@@ -94,7 +97,7 @@ class TrainingConfig(Config):
 
     dataset_images_count: Optional[float] = None  # 8 None
 
-    log_dataset_stats: bool = False #True
+    log_dataset_stats: bool = False
     with_train_scenes_file: bool = False
 
     max_epoch_number: Optional[int] = None
@@ -117,7 +120,6 @@ def get_train_config(shell, mode):
         use_constant_contact_integral=False,  # True,  # False, ##############
         use_lhs_preconditioner=False,
         with_self_collisions=False, #True,
-        mesh_layer_proportion=4,  # 2 4
         mode=mode,
     )
     return config

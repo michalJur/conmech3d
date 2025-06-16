@@ -188,9 +188,35 @@ def get_pygmsh_sphere(mesh_prop: MeshProperties, lifted=False):
     assert lifted is False
     radius=0.4
     if mesh_prop.mesh_density_x == 32:
-        mesh_size=0.021
+        # Bunny
+        # len(n) 42684
+        # len(e) 230213  
+
+        # len(sph(0.017)[0]) 41776
+        # len(sph(0.017)[1]) 235167
+
+        # mesh_size=0.021
+        mesh_size=0.017
+    elif mesh_prop.mesh_density_x == 16:
+        # Bunny
+        # len(n) 5944
+        # len(e) 28795
+
+        # len(sph(0.034)[0]) 5996
+        # len(sph(0.034)[1]) 30503
+
+        mesh_size=0.034
     elif mesh_prop.mesh_density_x == 8:
-        mesh_size=0.09
+        # Bunny
+        # len(n) 919
+        # len(e)  3587
+
+        # len(sph(0.071)[0]) 897
+        # len(sph(0.071)[1]) 3825
+
+        # mesh_size=0.09
+        mesh_size=0.071
+
     center=(0, 0, 0)
     with pygmsh.occ.Geometry() as geom:
         # Add a sphere
@@ -244,7 +270,7 @@ def get_pygmsh_bunny(mesh_prop, lifted=False):
         mesh_id = 2
     elif mesh_prop.mesh_density_x == 16:
         mesh_id = 3
-    elif mesh_prop.mesh_density_x in [8, 4]:
+    elif mesh_prop.mesh_density_x == 8:
         mesh_id = 4
     else:
         raise ArgumentError

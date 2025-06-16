@@ -138,10 +138,6 @@ class SyntheticDataset(BaseDataset):
             item_fn=item_fn,
         )
 
-    @property
-    def data_size_id(self):
-        return f"s:{self.data_count}"
-
     def generate_scene(self):
         base = lnh.generate_base(self.config.td.dimension)
         scene = generate_base_scene(base=base, config=self.config)

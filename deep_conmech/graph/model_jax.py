@@ -31,10 +31,13 @@ from deep_conmech.graph.logger import Logger
 from deep_conmech.graph.loss_raport import LossRaport
 from deep_conmech.graph.net_jax import CustomGraphNetJax, GraphNetArguments
 from deep_conmech.helpers import thh
-from deep_conmech.scene.scene_input import SceneInput
-from deep_conmech.training_config import TrainingConfig
+from deep_conmech.scene.scene_input import SCALE, SceneInput
+from deep_conmech.training_config import GRAD_ACCUM_STEPS, RECREATE_TRAINING_DATA, TrainingConfig
+from torch.utils.data.distributed import DistributedSampler
+from jax import tree_util
 
-SCALE = 1e3
+
+# TX = TypeVar("TX", bound=optax.OptState)
 
 
 class ErrorResult:
@@ -91,9 +94,8 @@ class GraphModelDynamicJax:
     def is_at_skip(self, skip):
         return skip is not None and self.epoch % skip == 0
 
-    def train(self):
+    def train(self, state: Optional[Any] = None):
         print("----TRAINING----")
-
         train_dataloader = base_dataset.get_train_dataloader(self.train_dataset)
         all_valid_dataloaders = [
             base_dataset.get_valid_dataloader(dataset)
@@ -105,13 +107,41 @@ class GraphModelDynamicJax:
         if validate:
             validation_devices_count = self.all_validation_datasets[0].device_count
             validation_devices = train_devices[:validation_devices_count]
+        
+        if state is not None:
+            print("----LOADING STATE----")
 
-        train_states = initialize_states(
-            config=self.config,
-            dataloader=train_dataloader,
-            devices=train_devices,
-            statistics=self.statistics,
-        )
+            def restore_optimizer_state(opt_state, restored):
+                """Restore optimizer state from loaded checkpoint (or .msgpack file)."""
+                return tree_util.tree_unflatten(
+                    tree_util.tree_structure(opt_state), tree_util.tree_leaves(restored)
+                )
+
+            optimizer = optax.inject_hyperparams(optax.adam)(
+                learning_rate=state['opt_state']['hyperparams']['learning_rate']
+            )
+            
+            train_state = TrainState.create(
+                apply_fn=create_train_state(
+                    jax.random.PRNGKey(42),
+                    get_sample_args(train_dataloader),
+                    self.config.td.initial_learning_rate,
+                    self.statistics
+                ).apply_fn,
+                params=state['params'],
+                tx=optimizer,
+                batch_stats=state.get('batch_stats', None)
+            )
+            restored_optimizer = restore_optimizer_state(train_state.opt_state, state["opt_state"])
+            train_state.replace(step=state["step"], opt_state=restored_optimizer)
+            train_states = flax.jax_utils.replicate(train_state, devices=train_devices)
+        else:
+            train_states = initialize_states(
+                config=self.config,
+                dataloader=train_dataloader,
+                devices=train_devices,
+                statistics=self.statistics,
+            )
 
         ###
         # def plot_weights(data_jax, name):
@@ -138,7 +168,13 @@ class GraphModelDynamicJax:
             or self.epoch < self.config.max_epoch_number
         ):
             self.epoch += 1
+            if self.epoch > 1 and RECREATE_TRAINING_DATA:
+                print("----RECREATING DATA----")
+                self.train_dataset.reset(epoch=self.epoch)
+                self.train_dataset.initialize_data(force_recreate=True, clear_all=False)
+                train_dataloader = base_dataset.get_train_dataloader(self.train_dataset)
 
+            jax.clear_caches()
             train_states = sync_batch_stats(train_states)
 
             def training_fun():
@@ -180,6 +216,7 @@ class GraphModelDynamicJax:
                 # if self.is_at_skip(self.config.td.validate_scenarios_at_epochs):
                 #     self.validate_all_scenarios_raport()
 
+
     def save_checkpoint(self, states):
         print("----SAVING CHECKPOINT----")
 
@@ -196,10 +233,19 @@ class GraphModelDynamicJax:
         return torch.load(path, map_location={"cuda:0": f"cuda:{rank}"})
 
     @staticmethod
-    def load_checkpointed_net(path: str):
+    def get_checkpointed_net(path: str) -> Any:  # or more specific type   
         print("----LOADING NET----")
-        state = orbax.checkpoint.PyTreeCheckpointer().restore(directory=path)
-        return state
+        try:
+            state = orbax.checkpoint.PyTreeCheckpointer().restore(directory=path)
+            
+            # Verify essential components are present
+            if not isinstance(state, dict) or 'params' not in state:
+                raise ValueError("Restored state does not contain required 'params'")
+                
+            return state
+            
+        except Exception as e:
+            raise RuntimeError(f"Failed to load checkpoint from {path}: {str(e)}")
 
     def load_checkpoint(self, path: str):
         print("----LOADING CHECKPOINT----")
@@ -269,12 +315,14 @@ class GraphModelDynamicJax:
         batch_tqdm = cmh.get_tqdm(
             dataloader, desc=tqdm_description, config=self.config, position=0
         )
-        if train:
+        if train and dataloader.sampler is DistributedSampler:
             dataloader.sampler.set_epoch(self.epoch)
 
         mean_loss_raport = LossRaport()
+        accum_loss = 0.0
+        accum_counter = 0
 
-        gc.disable()
+        # gc.disable()
 
         for batch_id, batch_data in enumerate(batch_tqdm):
             states, loss_raport = self.calculate_loss(
@@ -283,12 +331,30 @@ class GraphModelDynamicJax:
 
             # TODO: Check / assert state consistency across GPUs
             # TODO: Check if data are randomized
-            mean_loss_raport.add(loss_raport)
+            # mean_loss_raport.add(loss_raport)
+            mean_loss_raport = loss_raport ###
             if train:
                 self.examples_seen += loss_raport.count  # * self.world_size
 
+                # Accumulate loss for reporting at optimizer update
+                accum_loss += loss_raport.main
+                accum_counter += 1
+
+                # Report only at optimizer update
+                if accum_counter == GRAD_ACCUM_STEPS:
+                    avg_loss = accum_loss / GRAD_ACCUM_STEPS
+                    self.logger.writer.add_scalar(
+                        "Loss/OptimizerStep/main",
+                        avg_loss,
+                        self.examples_seen,
+                    )
+                    accum_loss = 0.0
+                    accum_counter = 0
+
+            # mean_loss_raport = loss_raport
             loss_description = f"{tqdm_description} loss: {(mean_loss_raport.main):.5f}"
             should_raport = self.should_raport_training() if train else self.should_raport_validation(batch_id=batch_id, batches_count=len(batch_tqdm))
+            
             if should_raport:
                 self.save_raport(
                     states=states,
@@ -299,7 +365,7 @@ class GraphModelDynamicJax:
                 loss_description += " - raport saved"
             batch_tqdm.set_description(loss_description)
 
-        gc.enable()
+        # gc.enable()
         return states
 
     def should_raport_training(self):
@@ -307,12 +373,6 @@ class GraphModelDynamicJax:
         
     def should_raport_validation(self, batch_id: int, batches_count: int):
         return batch_id == batches_count - 1
-    
-    def should_sace_training(self, batch_id: int, batches_count: int):
-        return (
-            batch_id == batches_count - 1
-            or self.examples_seen % self.config.td.raport_at_examples == 0
-        )
 
     def save_raport(self, states, mean_loss_raport, description: str):
         self.logger.writer.add_scalar(
@@ -429,7 +489,7 @@ def get_sample_args(dataloader):
 def initialize_states(config, dataloader, devices, statistics):
     sample_args = get_sample_args(dataloader)
     init_state = create_train_state(
-        jax.random.PRNGKey(42), sample_args, config.td.initial_learning_rate, statistics
+        jax.random.PRNGKey(42), sample_args, config.td.initial_learning_rate, statistics, grad_accum_steps=GRAD_ACCUM_STEPS
     )
 
     states = flax.jax_utils.replicate(init_state, devices=devices)
@@ -449,6 +509,8 @@ def rereplicate_states(states, devices):
 
 
 def sync_batch_stats(states):
+    if not states.batch_stats:
+        return states
     cross_replica_mean = jax.pmap(lambda x: lax.pmean(x, "x"), "x")
     return states.replace(batch_stats=cross_replica_mean(states.batch_stats))
 
@@ -563,18 +625,21 @@ def prepare_input(layer_list):
     return args
 
 
-def create_train_state(rng, sample_args, learning_rate, statistics):
+def create_train_state(rng, sample_args, learning_rate, statistics, grad_accum_steps):
     params, batch_stats = CustomGraphNetJax(statistics=statistics).get_params(
         sample_args, rng
     )
-    # jax.tree_util.tree_map(lambda x: x.shape, params)  # Checking output shapes
-
-    # optimizer = optax.adam(learning_rate=learning_rate)
-    optimizer = optax.inject_hyperparams(optax.adam)(learning_rate=learning_rate)
+    # Wrap the optimizer with MultiSteps for gradient accumulation
+    base_optimizer = optax.adam(learning_rate=learning_rate)
+    optimizer = optax.MultiSteps(base_optimizer, every_k_schedule=grad_accum_steps)
 
     def a_fn(variables, args, train):
+        if batch_stats:
+            return CustomGraphNetJax().apply(
+                variables, args, train, mutable=["batch_stats"]
+            )
         return CustomGraphNetJax().apply(
-            variables, args, train, mutable=["batch_stats"]
+            variables, args, train
         )
 
     return TrainState.create(
@@ -583,7 +648,9 @@ def create_train_state(rng, sample_args, learning_rate, statistics):
 
 
 def get_apply_net(state):
-    variables = {"params": state["params"], "batch_stats": state["batch_stats"]}
+    variables = {"params": state["params"]}
+    if state["batch_stats"]:
+        variables["batch_stats"] = state["batch_stats"]
 
     @jax.jit
     def apply_net(args):
@@ -603,20 +670,28 @@ def RMSE(predicted, exact):
 
 def get_loss_function(states, sharded_args, sharded_targets, train):
     def loss_function(params):
-        variables = {"params": params, "batch_stats": states.batch_stats}
-        sharded_net_result, non_trainable_params = states.apply_fn(
-            variables, sharded_args, train
-        )
-        losses = RMSE(sharded_net_result, sharded_targets)
-        new_batch_stats = non_trainable_params["batch_stats"]
-        ###
-        # new_batch_stats = flax.core.frozen_dict.unfreeze(new_batch_stats)
-        # for key in new_batch_stats.keys():
-        #     new_batch_stats[key]['BatchNorm_0']['mean'] = 0.
-        #     new_batch_stats[key]['BatchNorm_0']['var'] = SCALE
-        # new_batch_stats = flax.core.frozen_dict.freeze(new_batch_stats)
-        ###
-        return losses, new_batch_stats
+        variables = {"params": params}
+        if states.batch_stats:
+            variables["batch_stats"] = states.batch_stats
+            sharded_net_result, non_trainable_params = states.apply_fn(
+                variables, sharded_args, train
+            )
+            losses = RMSE(sharded_net_result, sharded_targets)
+            new_batch_stats = non_trainable_params["batch_stats"]
+            ###
+            # new_batch_stats = flax.core.frozen_dict.unfreeze(new_batch_stats)
+            # for key in new_batch_stats.keys():
+            #     new_batch_stats[key]['BatchNorm_0']['mean'] = 0.
+            #     new_batch_stats[key]['BatchNorm_0']['var'] = SCALE
+            # new_batch_stats = flax.core.frozen_dict.freeze(new_batch_stats)
+            ###
+            return losses, new_batch_stats
+        else:
+            sharded_net_result = states.apply_fn(
+                variables, sharded_args, train
+            )
+            losses = RMSE(sharded_net_result, sharded_targets)
+            return losses, None
 
     return loss_function
 
@@ -646,7 +721,10 @@ def apply_model_train(states, sharded_args, sharded_targets):
         states.params
     )
     grads_pmean = jax.lax.pmean(grads, axis_name="models")
-    states = states.apply_gradients(grads=grads_pmean, batch_stats=new_batch_stats)
+    if new_batch_stats:
+        states = states.apply_gradients(grads=grads_pmean, batch_stats=new_batch_stats)
+    else:
+        states = states.apply_gradients(grads=grads_pmean)
     return states, losses
 
 

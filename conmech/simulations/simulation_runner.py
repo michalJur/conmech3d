@@ -40,13 +40,13 @@ def get_solve_function(simulation_config):
         training_config = TrainingConfig(shell=False)
         training_config.sc = simulation_config
         checkpoint_path = get_checkpoint_path(training_config)
-        state = GraphModelDynamicJax.load_checkpointed_net(path=checkpoint_path)
+        state = GraphModelDynamicJax.get_checkpointed_net(path=checkpoint_path)
 
         if training_config.td.use_dataset_statistics:
             train_dataset = get_train_dataset(
                 training_config.td.dataset, config=training_config
             )
-            train_dataset.load_indices()
+            train_dataset._load_indices()
 
         if "compare" in simulation_config.mode:
             return partial(

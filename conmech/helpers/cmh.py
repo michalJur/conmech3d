@@ -109,8 +109,8 @@ def get_base_for_comarison():
     return all_paths[0]
 
 
-def get_run_label(config, scenario):
-    return f"{config.current_time}_{scenario.simulation_config.mode}_{scenario.mesh_prop.mesh_type}_{scenario.name}"
+def get_run_label(config, scenario, epoch):
+    return f"{config.current_time}_epoch:{epoch}_{scenario.simulation_config.mode}_{scenario.mesh_prop.mesh_type}_{scenario.name}"
 
 
 def get_all_indices(data_path):

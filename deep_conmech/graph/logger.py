@@ -30,13 +30,15 @@ class Logger:
             for st in statistics.values():
                 self.save_hist_and_json(st=st)
 
-    def save_parameters(self):
-        def pretty_json(value):
-            dictionary = vars(value)
-            json_str = json.dumps(dictionary, indent=2)
-            return "".join("\t" + line for line in json_str.splitlines(True))
 
-        data_str = pretty_json(self.config.td)
+    def pretty_json(self, value):
+        dictionary = vars(value)
+        json_str = json.dumps(dictionary, indent=2)
+        return "".join("\t" + line for line in json_str.splitlines(True))
+        
+    def save_parameters(self):
+
+        data_str = self.pretty_json(self.config.td)
         self.writer.add_text(
             f"{self.config.current_time}_parameters.txt", data_str, global_step=0
         )
@@ -48,10 +50,13 @@ class Logger:
         self.save_hist(st)
         # normalized_df = (df - df.mean()) / df.std()
         # self.save_hist(df=normalized_df, name=f"{name}_normalized")
-        data_str = st.describe().to_json()
-        self.writer.add_text(
-            f"{self.config.current_time}_{st.label}.txt", data_str, global_step=0
-        )
+        data_str = st.describe().to_json(indent=2)
+        # self.writer.add_text(
+        #     f"{self.config.current_time}_{st.label}.txt", data_str, global_step=0
+        # )
+        file_path = f"{self.current_log_catalog}/statistics_{self.dataset.data_id}.txt"
+        with open(file_path, "a", encoding="utf-8") as file:
+            file.write(data_str)
 
     def save_hist(self, st: FeaturesStatistics):
         # pandas_axs = st.pandas_data.hist(figsize=(20, 10))  # , ec="k")

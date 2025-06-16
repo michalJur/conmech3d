@@ -25,7 +25,7 @@ class ScenariosDataset(BaseDataset):
     def __init__(
         self,
         description: str,
-        all_scenarios: List[Scenario],
+        all_scenarios_fun: List[Scenario],
         solve_function: Callable,
         load_data_to_ram: bool,
         with_scenes_file: bool,
@@ -36,12 +36,12 @@ class ScenariosDataset(BaseDataset):
         device_count: int,
         item_fn,
     ):
-        self.all_scenarios = all_scenarios
+        self.all_scenarios_fun = all_scenarios_fun
 
         super().__init__(
             description=description,
-            dimension=check_and_get_dimension(all_scenarios),
-            data_count=self.get_data_count(self.all_scenarios),
+            dimension=None,
+            data_count=None,
             solve_function=solve_function,
             load_data_to_ram=load_data_to_ram,
             randomize=randomize,
@@ -53,13 +53,17 @@ class ScenariosDataset(BaseDataset):
             device_count=device_count,
             item_fn=item_fn,
         )
+        self.reset(epoch=1)
+
+    def reset(self, epoch):
+        self.epoch = epoch
+        self.all_scenarios = self.all_scenarios_fun()
+        self.dimension=check_and_get_dimension(self.all_scenarios),
+        self.data_count=self.get_data_count(self.all_scenarios)
+
 
     def get_data_count(self, scenarios):
         return np.sum([int(s.schedule.episode_steps) for s in scenarios])
-
-    @property
-    def data_size_id(self):
-        return f"f:{self.config.td.final_time}"
 
     def get_assigned_scenarios(self, num_workers, process_id):
         scenarios_count = len(self.all_scenarios)
@@ -165,9 +169,7 @@ class ScenariosDataset(BaseDataset):
                 final_catalog = (
                     f"{self.config.output_catalog}/{self.config.current_time} - DATASET"
                 )
-                label = f"{scene.simulation_config.mode}_{scene.mesh_prop.mesh_type}"
-
-                label = cmh.get_run_label(self.config, scenario)
+                label = cmh.get_run_label(self.config, scenario, self.epoch)
                 save_three(
                     scene=scene,
                     step=episode_step, #index,

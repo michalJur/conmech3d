@@ -252,10 +252,11 @@ class CustomGraphNetJax(nn.Module):
 
     @nn.compact
     def __call__(self, args: GraphNetArguments, train: bool):
-        latent_dimension = 128  # 128 64
-        internal_layer_count = 0  # 0 1
-        message_passes_sparse = 18  # 1 8 12 ####
-        message_passes_dense = 18  # 1 8 12 ####
+        latent_dimension = 256  # 128 64
+        internal_layer_count = 0 #0  # 0 1
+        processor_layer_count = 0  # 0 1
+        message_passes_sparse = 4 #18  # 1 8 12 ####
+        message_passes_dense = 4 #18  # 1 8 12 ####
         dim = 3
         input_batch_norm = False  # True
         # layer_norm=True
@@ -271,7 +272,7 @@ class CustomGraphNetJax(nn.Module):
             for _ in range(message_passes):
                 node_latents, edge_latents = ProcessorLayer(
                     latent_dimension=latent_dimension,
-                    internal_layer_count=internal_layer_count,
+                    internal_layer_count=processor_layer_count,
                     train=train,
                 )(node_latents, edge_latents, edge_index, receivers_count)
             return node_latents
@@ -298,6 +299,8 @@ class CustomGraphNetJax(nn.Module):
         def get_data_norm(label, data):
             if data is None:
                 return None
+            if self.statistics is None or label not in self.statistics:
+                return data 
             return DataNorm(
                 mean_init=lambda _: jnp.array(self.statistics[label].mean),
                 std_init=lambda _: jnp.array(self.statistics[label].std),
@@ -392,4 +395,5 @@ class CustomGraphNetJax(nn.Module):
     def get_params(self, sample_args, init_rng):
         rngs_dict = {"params": init_rng}
         variables = self.init(rngs_dict, sample_args, train=False)
-        return variables["params"], variables["batch_stats"]
+        batch_stats = None if "batch_stats" not in variables else variables["batch_stats"]
+        return variables["params"], batch_stats

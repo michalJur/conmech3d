@@ -33,10 +33,10 @@
     "nvidia-smi-plus.refresh.autoRefresh": true,
     "workbench.colorCustomizations": {
         "commandCenter.border": "#e7e7e799",
-        "titleBar.activeBackground": "#787a8a",
+        "titleBar.activeBackground": "#372fab",
         "titleBar.activeForeground": "#e7e7e7",
-        "titleBar.inactiveBackground": "#787a8a99",
+        "titleBar.inactiveBackground": "#372fab99",
         "titleBar.inactiveForeground": "#e7e7e799"
     },
-    "peacock.remoteColor": "#787a8a"
+    "peacock.remoteColor": "#372fab"
 }

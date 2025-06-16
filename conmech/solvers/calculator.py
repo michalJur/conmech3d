@@ -95,6 +95,10 @@ class Calculator:
 
         # print("f_k: ", state.f_k, ' k: ', state.k, ' x_k norm: ', jnp.linalg.norm(state.x_k), ' x shape: ', len(state.x_k))
         assert not jnp.isnan(state.x_k).any()
+        # if jnp.isnan(state.x_k).any():
+        #     cmh.Console.print_fail("NaN in x_k, returning zero")
+        #     return np.asarray(jnp.zeros_like(state.x_k))
+
 
         if verbose and not state.converged:
             if state.status == 5:

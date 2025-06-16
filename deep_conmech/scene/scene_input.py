@@ -18,6 +18,8 @@ from deep_conmech.helpers import thh
 from deep_conmech.scene.scene_layers import MeshLayerLinkData
 from deep_conmech.scene.scene_randomized import SceneRandomized
 
+SCALE = 1e3
+SCALE_IN = 1e1
 
 @numba.njit
 def get_indices_from_graph_sizes_numba(graph_sizes: List[int]):
@@ -84,7 +86,7 @@ class SceneInput(SceneRandomized):
                 return jnp.hstack(
                     (
                         get_column(scene.input_initial_nodes),  # cached
-                        get_column(scene.new_displacement_norm_by_itself) #NEW
+                        get_column(scene.new_displacement_norm_by_itself  * SCALE_IN) #NEW
                         # get_column(scene.input_displacement_old),
                         # get_column(scene.input_velocity_old),
                         # get_column(scene.input_forces),
@@ -167,7 +169,7 @@ class SceneInput(SceneRandomized):
                 return jnp.hstack(
                     (
                         # input_initial_nodes,
-                        new_displacement,
+                        new_displacement * SCALE_IN,
                         # linear_acceleration,
                         # boundary_normals,
                         # boundary_friction,

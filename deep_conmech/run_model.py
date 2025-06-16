@@ -4,6 +4,7 @@
 
 # import multiprocessing
 
+import multiprocessing
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -14,7 +15,10 @@ from argparse import ArgumentParser, Namespace
 from ctypes import ArgumentError
 from pathlib import Path
 
+# Force JAX to initialize once
 import jax
+jax.devices()
+
 import numpy as np
 import torch
 import torch.distributed as dist
@@ -32,7 +36,7 @@ from deep_conmech.data.synthetic_dataset import SyntheticDataset
 from deep_conmech.graph.model_jax import GraphModelDynamicJax, save_tf_model
 from deep_conmech.graph.net_jax import CustomGraphNetJax
 from deep_conmech.helpers import dch
-from deep_conmech.training_config import TrainingConfig, TrainingData, get_train_config
+from deep_conmech.training_config import RECREATE_TRAINING_DATA, TrainingConfig, TrainingData, get_train_config
 
 
 def setup_distributed(rank: int, world_size: int):
@@ -59,8 +63,7 @@ def initialize_data(config: TrainingConfig):
     train_dataset = get_train_dataset(
         config.td.dataset, config=config, device_count=device_count
     )
-    train_dataset.initialize_data()
-
+    train_dataset.initialize_data(clear_all=RECREATE_TRAINING_DATA)
     all_validation_datasets = get_all_val_datasets(
         config=config, rank=0, world_size=1, device_count=device_count  # 1
     )
@@ -102,7 +105,7 @@ def train_single(
             world_size=world_size,
             device_count=device_count,
         )
-        train_dataset.load_indices()
+        train_dataset._load_indices()
 
     statistics = (
         train_dataset.get_statistics() if config.td.use_dataset_statistics else None
@@ -128,9 +131,13 @@ def train_single(
         statistics=statistics,
     )
 
-    if config.load_newest_train:
-        model.load_checkpoint(path=checkpoint_path)
-    model.train()
+    
+    state = None
+    # if config.load_newest_train:
+    # path = '/home/mjureczka/Desktop/conmech3d/output/25.06.03-20.54.25 - JAX GRAPH MODELS/17492983130616 - EPOCH 9 - MODEL'
+    # state = model.get_checkpointed_net(path=path)
+    # model.epoch = 9
+    model.train(state=state)
 
 
 def visualize(config: TrainingConfig):
@@ -141,7 +148,7 @@ def visualize(config: TrainingConfig):
     dataset.initialize_data()
 
     model_path = "log/jax_model.tflite"
-    state = GraphModelDynamicJax.load_checkpointed_net(path=checkpoint_path)
+    state = GraphModelDynamicJax.get_checkpointed_net(path=checkpoint_path)
     save_tf_model(model_path, state, dataset)
 
     netron.start(model_path)
@@ -156,7 +163,7 @@ def plot(config: TrainingConfig):
     all_print_scenaros = scenarios.all_print(config.td, config.sc)
 
     checkpoint_path = get_checkpoint_path(config)
-    state = GraphModelDynamicJax.load_checkpointed_net(path=checkpoint_path)
+    state = GraphModelDynamicJax.get_checkpointed_net(path=checkpoint_path)
     GraphModelDynamicJax.plot_all_scenarios(state, all_print_scenaros, config)
 
 
@@ -204,7 +211,7 @@ def get_train_dataset(
     elif dataset_type == "calculator":
         train_dataset = CalculatorDataset(
             description="train",
-            all_scenarios=scenarios.all_train(config.td, config.sc),
+            all_scenarios_fun=lambda: scenarios.all_train(config.td, config.sc),
             load_data_to_ram=config.load_training_data_to_ram,
             with_scenes_file=config.with_train_scenes_file,
             randomize=True,

@@ -456,10 +456,10 @@ Based on code by Matthias Müller - Ten Minute Physics, https://www.youtube.com/
 
             // Add arrow helper
             arrowHelper.name = "arrowHelper";
-            // scene.add(arrowHelper);
+            scene.add(arrowHelper);
 
             // Create an obstacle plane perpendicular to the arrow
-            const planeSize = 20;
+            const planeSize = 10;
             const planeGeometry = new THREE.PlaneGeometry(planeSize, planeSize);
             const planeMaterial = new THREE.MeshStandardMaterial({ 
                 color: obstacleColor,

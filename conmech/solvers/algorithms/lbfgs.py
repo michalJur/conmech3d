@@ -572,6 +572,7 @@ class LBFGSResults(NamedTuple):
 
 def minimize_lbfgs_jax(fun, hes_inv, x0, args):
     state_initial = get_state_initial(fun=fun, hes_inv=hes_inv, args=args, x0=x0)
+    # return state_initial
     return lax.while_loop(cond_fun_jax, body_fun_jax, state_initial)
 
 

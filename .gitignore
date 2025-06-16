@@ -1,6 +1,8 @@
 # PyCharm
 .idea/*
 
+.vscode
+
 # conmech input/output
 log/*
 datasets/*

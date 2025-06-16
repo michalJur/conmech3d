@@ -79,15 +79,17 @@ def get_dataloader(
     load_data: bool,
     collate_fn=None,
 ):
-    sampler = DistributedSampler(
-        dataset, num_replicas=world_size, rank=rank, shuffle=shuffle
-    )
+    # sampler = DistributedSampler(
+    #     dataset, num_replicas=world_size, rank=rank, shuffle=shuffle
+    # )
     return DataLoader(
         dataset=dataset,
         batch_size=batch_size,
         num_workers=num_workers,
-        # shuffle=shuffle,
-        sampler=sampler,
+        ###
+        shuffle=shuffle,
+        # sampler=sampler,
+        ###
         pin_memory=True,
         persistent_workers=num_workers > 0,
         worker_init_fn=worker_init_fn if load_data else None,
@@ -139,10 +141,6 @@ class BaseDataset:
         self.item_fn = item_fn
         self.statistics = None
         self.statistics_path = Path(self.main_directory) / 'STATISTICS.pkl'
-        
-    @property
-    def data_size_id(self):
-        pass
 
     @property
     def is_synthetic_generation_memory_overflow(self):
@@ -157,7 +155,7 @@ class BaseDataset:
     @property
     def data_id(self):
         td = self.config.td
-        return f"{self.description}_d:{td.dimension}_m:{td.mesh_density}_{self.data_size_id}"
+        return f"{self.description}_d:{td.dimension}_m:{td.mesh_density}"
 
     @property
     def main_directory(self):
@@ -183,35 +181,34 @@ class BaseDataset:
     def features_data_path(self):
         return f"{self.tmp_directory}/DATASET.feat"
 
-    def unload_and_clear_indices(self):
+    def _unload_and_clear_indices(self):
         self.features_indices = None
         cmh.clear_folder(self.tmp_directory)
         cmh.create_folder(self.tmp_directory)
 
-    def initialize_data(self):
+    def initialize_data(self, clear_all):
         print(f"----NODE {self.rank}: INITIALIZING DATASET ({self.data_id})----")
-        self.create_folders()
-        self.load_indices()
-
-        if self.check_indices():
+        if clear_all:
+            print("Clearing old data")
+            cmh.clear_folder(self.main_directory)
+    
+        self._create_folders()
+        self._load_indices()
+        if self._check_indices() :
             print(
                 f"Taking prepared dataset ({self.get_size(self.features_data_path):.2f} GB)"
             )
             return
 
-        self.recreate_data()
+        self._unload_and_clear_indices()
+        # if not self.with_scenes_file:
+        #     print("Skipping scenes file generation")
 
-    def recreate_data(self):
-        self.unload_and_clear_indices()
-        if not self.with_scenes_file:
-            print("Skipping scenes file generation")
+        self._initialize_scenes()
+        self._load_indices()
+        assert self._check_indices()
 
-        self.initialize_scenes()
-
-        self.load_indices()
-        assert self.check_indices()
-
-    def create_folders(self):
+    def _create_folders(self):
         cmh.create_folders(self.images_directory)
         cmh.create_folders(self.tmp_directory)
 
@@ -221,19 +218,19 @@ class BaseDataset:
     def generate_data(self):
         pass
 
-    def initialize_scenes(self):
+    def _initialize_scenes(self):
         # cmh.profile(self.generate_data_process)
 
-        self.scene_indices = self.get_all_scene_indices()
-        if self.data_count == len(self.scene_indices):
-            print(
-                f"Taking prepared scenes ({self.get_size(self.scenes_data_path):.2f} GB)"
-            )
-            return
+        # self.scene_indices = self.get_all_scene_indices()
+        # if self.data_count == len(self.scene_indices):
+        #     print(
+        #         f"Taking prepared scenes ({self.get_size(self.scenes_data_path):.2f} GB)"
+        #     )
+        #     return
 
-        print("Clearing old data")
-        cmh.clear_folder(self.main_directory)
-        self.create_folders()
+        # print("Clearing old data")
+        # cmh.clear_folder(self.main_directory)
+        # self.create_folders()
 
         self.generate_data()
 
@@ -267,10 +264,10 @@ class BaseDataset:
 
             yield scene
 
-    def check_indices(self):
+    def _check_indices(self):
         return self.data_count == len(self.features_indices)
 
-    def load_indices(self):
+    def _load_indices(self):
         self.features_indices = pkh.get_all_indices(self.features_data_path)[
             : self.data_count
         ]
@@ -443,7 +440,7 @@ class BaseDataset:
                 multilayer_edges_data, sparse_layer.edge_attr_to_down
             )
 
-            dense_nodes_data = cat(dense_nodes_data, dense_layer.x)
+            # dense_nodes_data = cat(dense_nodes_data, dense_layer.x)
             dense_edges_data = cat(dense_edges_data, dense_layer.edge_attr)
 
             target_data = cat(target_data, target_layer.normalized_new_displacement)
@@ -464,9 +461,9 @@ class BaseDataset:
             "multilayer_edges": FeaturesStatisticsPandas(
                 label="multilayer_edges", data=multilayer_edges_data
             ),
-            "dense_nodes": FeaturesStatisticsPandas(
-                label="dense_nodes", data=dense_nodes_data
-            ),
+            # "dense_nodes": FeaturesStatisticsPandas(
+            #     label="dense_nodes", data=dense_nodes_data
+            # ),
             "dense_edges": FeaturesStatisticsPandas(
                 label="dense_edges", data=dense_edges_data
             ),

@@ -41,7 +41,6 @@ class SimulationConfig:
     use_constant_contact_integral: bool
     use_lhs_preconditioner: bool
     with_self_collisions: bool
-    mesh_layer_proportion: int = None
     mode: str = "normal"  # "normal" "skinning" "net" "pca"
 
 
