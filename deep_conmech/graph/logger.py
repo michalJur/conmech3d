@@ -9,6 +9,7 @@ from torch.utils.tensorboard.writer import SummaryWriter
 from deep_conmech.data import base_dataset
 from deep_conmech.data.dataset_statistics import FeaturesStatistics
 from deep_conmech.training_config import TrainingConfig
+from deep_conmech.training_config import mtd
 
 
 class Logger:
@@ -37,8 +38,7 @@ class Logger:
         return "".join("\t" + line for line in json_str.splitlines(True))
         
     def save_parameters(self):
-
-        data_str = self.pretty_json(self.config.td)
+        data_str = self.pretty_json(mtd) + "\n\n" + self.pretty_json(self.config.td)
         self.writer.add_text(
             f"{self.config.current_time}_parameters.txt", data_str, global_step=0
         )

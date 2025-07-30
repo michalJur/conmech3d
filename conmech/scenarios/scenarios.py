@@ -131,14 +131,14 @@ default_body_prop_3d = TimeDependentBodyProperties(
     mass_density=1.0,
 )
 
-# net_body_prop_3d = TimeDependentBodyProperties(
-#     mu=12.0,  # 8,
-#     lambda_=12.0,  # 8,
-#     theta=0.0,
-#     zeta=0.0,
-#     mass_density=1.0,
-# )
-net_body_prop_3d = default_body_prop_3d
+net_body_prop_3d = TimeDependentBodyProperties(
+    mu=40.0,  # 8,
+    lambda_=40.0,  # 8,
+    theta=4.0,
+    zeta=4.0,
+    mass_density=1.0,
+)
+# net_body_prop_3d = default_body_prop_3d
 
 
 default_thermal_expansion_coefficients = np.array(
@@ -191,6 +191,9 @@ default_obstacle_prop = ObstacleProperties(hardness=100.0, friction=5.0)
 default_temp_obstacle_prop = TemperatureObstacleProperties(
     hardness=100.0, friction=5.0, heat=0.01
 )
+
+
+net_obstacle_prop = ObstacleProperties(hardness=100.0, friction=2.0) # 5.0
 
 M_RECTANGLE = "pygmsh_rectangle"
 M_SPLINE = "pygmsh_spline"
@@ -555,7 +558,7 @@ def polygon_two(
 
 
 bottom_obstacle_3d = Obstacle(
-    np.array([[[0.0, 0.01, 1.0]], [[0.0, 0.01, -2.0]]]), default_obstacle_prop
+    np.array([[[0.0, 0.01, 1.0]], [[0.0, 0.01, -2.0]]]), net_obstacle_prop
 )
 
 
@@ -677,7 +680,7 @@ def bunny_fall(
         forces_function=scale_forces * np.array([0.0, 0.0, -1.0]),
         obstacle=Obstacle(  # 0.3
             np.array([[[0.0, arg, 1.0]], [[0.0, 0.0, -0.5]]]),
-            default_obstacle_prop,
+            net_obstacle_prop,
             # ObstacleProperties(hardness=100.0, friction=2.0),  # friction=5.0
         ),
         simulation_config=simulation_config,
@@ -710,7 +713,7 @@ def sphere_fall(
         forces_function=scale_forces * np.array([0.0, 0.0, -1.0]),
         obstacle=Obstacle(  # 0.3
             np.array([[[0.0, arg, 1.0]], [[0.0, 0.0, -0.5]]]),
-            default_obstacle_prop,
+            net_obstacle_prop,
             # ObstacleProperties(hardness=100.0, friction=2.0),  # friction=5.0
         ),
         simulation_config=simulation_config,
@@ -742,7 +745,7 @@ def bunny_push_3d_old( # TODO
         forces_function=scale_forces * np.array([0.0, -0.5, -1.0]),
         obstacle=Obstacle(  # 0.3
             np.array([[[0.0, 0.0, 1.0]], [[0.0, 0.0, -0.5]]]),
-            default_obstacle_prop,
+            net_obstacle_prop,
             # ObstacleProperties(hardness=100.0, friction=2.0),  # friction=5.0
         ),
         simulation_config=simulation_config,
@@ -773,7 +776,7 @@ def bunny_push( # TODO
         forces_function=scale_forces * np.array([0.0, -1.0, -0.5]),
         obstacle=Obstacle(  # 0.3
             np.array([[[0.0, 0.0, 1.0]], [[0.0, 0.0, -0.4]]]),
-            default_obstacle_prop,
+            net_obstacle_prop,
             # ObstacleProperties(hardness=100.0, friction=2.0),  # friction=5.0
         ),
         simulation_config=simulation_config,
@@ -835,7 +838,7 @@ def bunny_swing_3d(
     )
 
 
-def _return_base_compare(name, mesh_density, final_time, simulation_config, scale_forces, obstacle_meshes):
+def _return_base_compare(name, mesh_density, mesh_layer_proportion, final_time, simulation_config, scale_forces, obstacle_meshes):
     if 'bunny' in name:
         mesh_type = M_BUNNY_3D
     elif 'sphere' in name:
@@ -847,6 +850,7 @@ def _return_base_compare(name, mesh_density, final_time, simulation_config, scal
         mesh_prop=MeshProperties(
             dimension=3,
             mesh_type=mesh_type,
+            mesh_layer_proportion=mesh_layer_proportion,
             scale=[1],
             mesh_density=[mesh_density],
         ),
@@ -855,7 +859,7 @@ def _return_base_compare(name, mesh_density, final_time, simulation_config, scal
         forces_function=scale_forces * np.array([0.0, 0.0, -1.0]),
         obstacle=Obstacle(
             geometry=None,
-            properties=default_obstacle_prop,
+            properties=net_obstacle_prop,
             # properties=ObstacleProperties(
             #     hardness=100.0, friction=2.0
             # ),
@@ -867,6 +871,7 @@ def _return_base_compare(name, mesh_density, final_time, simulation_config, scal
 def pingpong(
     simulation_config: SimulationConfig,
     mesh_density: int,
+    mesh_layer_proportion = 4,
     final_time=12.01,
     scale=1,
     tag="",
@@ -894,12 +899,13 @@ def pingpong(
                 slope=30
             )
         )
-    return _return_base_compare(name=name, mesh_density=mesh_density, final_time=final_time, simulation_config=simulation_config, scale_forces=scale_forces, obstacle_meshes=obstacle_meshes)
+    return _return_base_compare(name=name, mesh_density=mesh_density, mesh_layer_proportion=mesh_layer_proportion, final_time=final_time, simulation_config=simulation_config, scale_forces=scale_forces, obstacle_meshes=obstacle_meshes)
 
 
 def slide(
     simulation_config: SimulationConfig,
     mesh_density: int,
+    mesh_layer_proportion = 4,
     final_time=8.01,
     scale=1,
     tag="",
@@ -922,12 +928,13 @@ def slide(
                 slope=20
             )
         )
-    return _return_base_compare(name=name, mesh_density=mesh_density, final_time=final_time, simulation_config=simulation_config, scale_forces=scale_forces, obstacle_meshes=obstacle_meshes)
+    return _return_base_compare(name=name, mesh_density=mesh_density, mesh_layer_proportion=mesh_layer_proportion, final_time=final_time, simulation_config=simulation_config, scale_forces=scale_forces, obstacle_meshes=obstacle_meshes)
 
 def chute(
     simulation_config: SimulationConfig,
     mesh_density: int,
     final_time=8.01,
+    mesh_layer_proportion = 4,
     scale=1,
     tag="",
     arg=1.0,
@@ -951,7 +958,7 @@ def chute(
                 slope=(45 - (i-1) * 10)
             )
         )
-    return _return_base_compare(name=name, mesh_density=mesh_density, final_time=final_time, simulation_config=simulation_config, scale_forces=scale_forces, obstacle_meshes=obstacle_meshes)
+    return _return_base_compare(name=name, mesh_density=mesh_density, mesh_layer_proportion=mesh_layer_proportion, final_time=final_time, simulation_config=simulation_config, scale_forces=scale_forces, obstacle_meshes=obstacle_meshes)
 
 
 
@@ -985,30 +992,35 @@ def get_args(td, sc):
     )
 
 
-def all_train(td, sc):
-    if td.dimension != 3:
-        return []  # get_train_data(**args)
-    # args = []
-    data = []
 
-    final_time = 7.01
-    # hardness = 100.0
-    # friction = 2.0
-    
-    for _ in range(64):
-        # Randomly select one option from each category
-        mesh_layer_proportion = np.random.choice([2, 4])
-        bunny = np.random.choice([True, False])
-        mesh_density = 32
+def generate_train_scenario(sc):
+        mesh_layer_proportion = 2 #np.random.choice([2, 4])
 
         forces_dim = np.random.choice([0, 1, 2])
         forces_dir = np.random.choice([-1.0, 1.0])
-        scale_forces = round(np.random.uniform(0.0, 5.0), 2)
+        scale_forces = round(np.random.uniform(0.0, 2.0), 2)
 
         distance = round(np.random.uniform(1.5, 3.0), 2)
         
         normals_dim_plus = np.random.choice([0, 1, 2])
         slope = np.random.randint(-45, 45)
+
+        return get_train_scenario(
+            sc,
+            mesh_layer_proportion=mesh_layer_proportion,
+            forces_dim=forces_dim,
+            forces_dir=forces_dir,
+            scale_forces=scale_forces,
+            distance=distance,
+            normals_dim_plus=normals_dim_plus,
+            slope=slope
+        )
+
+def get_train_scenario(sc, mesh_layer_proportion, forces_dim, forces_dir, scale_forces, distance, normals_dim_plus, slope, bunny = True, mesh_density = 16, final_time = 8.01):
+        # hardness = 100.0
+        # friction = 2.0
+
+        # bunny = True #np.random.choice([True, False])
 
     # bunny = True
     # for forces_dim in [0, 1, 2]:
@@ -1057,7 +1069,7 @@ def all_train(td, sc):
     # data = []
     # for arg in args:
         mesh_type = M_BUNNY_3D if 'bunny' in name else M_SPHERE_3D
-        data.append(Scenario(
+        scenario = Scenario(
                     name=name,
                     mesh_prop=MeshProperties(
                         dimension=3,
@@ -1066,7 +1078,7 @@ def all_train(td, sc):
                         mesh_density=[mesh_density],
                         scale=[1],
                     ),
-                    body_prop=default_body_prop_3d,
+                    body_prop=net_body_prop_3d,
                     schedule=Schedule(final_time=final_time),
                     forces_function=force,
                     obstacle=Obstacle(
@@ -1076,15 +1088,26 @@ def all_train(td, sc):
                                 [position],
                             ]
                         ),
-                        default_obstacle_prop #ObstacleProperties(hardness=hardness, friction=friction),
+                        net_obstacle_prop #ObstacleProperties(hardness=hardness, friction=friction),
                     ),
                     simulation_config=sc,
                 )
                 
                 # bunny_fall_3d(**args, arg=arg, scale_forces=scale_forces)
                 # for (arg, scale_forces) in [(-0.7, 1.0), (0.8, 6.0), (1.2, 2.0), (-0.5, 4.0)]
-        )
+        return scenario
 
+
+
+
+def all_train(td, sc):
+    return lambda: generate_train_scenario(sc), 8 #32
+    # args = []
+    data = []
+    
+    for _ in range(32): #64):
+        # Randomly select one option from each category
+        data.append(generate_train_scenario(sc))
     # data.extend([
     #     slide(
     #         mesh_density=td.mesh_density,
@@ -1100,10 +1123,24 @@ def all_train(td, sc):
     #         for (arg, scale_forces) in [(-2.0, 6.0), (1.0, 1.0)]
     #     ]
     # )
-    return data
+    return data[:2]
+    # return all_validation(td, sc)[0]
 
 
 def all_validation(td, sc):
+    # final_time = 8.01
+    # data = [[m 
+    #             chute(
+    #                 mesh_density=td.mesh_density,
+    #                 final_time=final_time,
+    #                 simulation_config=sc,
+    #                 mesh_name='bunny',
+    #             ),
+    #         ]]
+    data = [[s] for s in all_compare(td, sc)]
+    # data = data[-1:]
+    return data
+
     args = get_args(td, sc)
     return []
     if td.dimension == 3:
@@ -1149,46 +1186,93 @@ def all_validation(td, sc):
 
 def all_compare(td, sc):
     final_time = 8.01
-    train_data = all_train(td, sc)
+    mesh_density = 16
+    mesh_layer_proportion = 2
     return [
-                train_data[1],
-                train_data[23],
-                train_data[-23],
-                train_data[-10],
+                get_train_scenario(
+                    sc,
+                    mesh_layer_proportion = mesh_layer_proportion,
+                    forces_dim = 1,
+                    forces_dir = -1.0,
+                    scale_forces = 0.66,
+                    distance = 2.61,
+                    normals_dim_plus = 1,
+                    slope = -29,
+                    mesh_density=mesh_density
+                ),
+                get_train_scenario(
+                    sc,
+                    mesh_layer_proportion = mesh_layer_proportion,
+                    forces_dim = 2,
+                    forces_dir = 1.0,
+                    scale_forces = 0.89,
+                    distance = 2.42,
+                    normals_dim_plus = 2,
+                    slope = 21,
+                    mesh_density=mesh_density
+                ),
+                get_train_scenario(
+                    sc,
+                    mesh_layer_proportion = mesh_layer_proportion,
+                    forces_dim = 2,
+                    forces_dir = -1.0,
+                    scale_forces = 1.43,
+                    distance = 1.56,
+                    normals_dim_plus = 0,
+                    slope = 42,
+                    mesh_density=mesh_density
+                ),
+                get_train_scenario(
+                    sc,
+                    mesh_layer_proportion = mesh_layer_proportion,
+                    forces_dim = 2,
+                    forces_dir = -1.0,
+                    scale_forces = 1.38,
+                    distance = 2.18,
+                    normals_dim_plus = 1,
+                    slope = -6,
+                    mesh_density=mesh_density
+                ),
                 chute(
-                    mesh_density=td.mesh_density,
+                    mesh_density=mesh_density,
+                    mesh_layer_proportion=mesh_layer_proportion,
                     final_time=final_time,
                     simulation_config=sc,
                     mesh_name='bunny',
                 ),
                 slide(
-                    mesh_density=td.mesh_density,
+                    mesh_density=mesh_density,
+                    mesh_layer_proportion=mesh_layer_proportion,
                     final_time=final_time,
                     simulation_config=sc,
                     mesh_name='bunny',
                 ),
                 pingpong(
-                    mesh_density=td.mesh_density,
+                    mesh_density=mesh_density,
+                    mesh_layer_proportion=mesh_layer_proportion,
                     simulation_config=sc,
                     mesh_name='bunny',
                 ),
                 chute(
-                    mesh_density=td.mesh_density,
+                    mesh_density=mesh_density,
+                    mesh_layer_proportion=mesh_layer_proportion,
                     final_time=final_time,
                     simulation_config=sc,
                     mesh_name='sphere',
                 ),
                 slide(
-                    mesh_density=td.mesh_density,
+                    mesh_density=mesh_density,
+                    mesh_layer_proportion=mesh_layer_proportion,
                     final_time=final_time,
                     simulation_config=sc,
                     mesh_name='sphere',
                 ),
-                pingpong(
-                    mesh_density=td.mesh_density,
-                    simulation_config=sc,
-                    mesh_name='sphere',
-                ),
+                # pingpong(
+                #     mesh_density=mesh_density,
+                #     mesh_layer_proportion=mesh_layer_proportion,
+                #     simulation_config=sc,
+                #     mesh_name='sphere',
+                # ),
                 # ###
                 # bunny_obstacles(
                 #     mesh_density=td.mesh_density,
@@ -1246,6 +1330,7 @@ def all_compare(td, sc):
     
 
 def all_print(td, sc):
+    return []
     args = get_args(td, sc)
     if td.dimension == 3:
         args["final_time"] = 10.0  # 12.0

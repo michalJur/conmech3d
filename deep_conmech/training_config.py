@@ -8,11 +8,30 @@ from conmech.helpers.config import Config, SimulationConfig
 
 DIMENSION = 3
 CLOSEST_COUNT = 4  # 3 4
-CLOSEST_BOUNDARY_COUNT = CLOSEST_COUNT - 1
 
-RECREATE_TRAINING_DATA = False
-GRAD_ACCUM_STEPS = 32
+@dataclass
+class MainTrainingData:
+    dimension: int = DIMENSION
+    closest_count: int = CLOSEST_COUNT  # 3 4
+    closest_boundary_count: int = CLOSEST_COUNT - 1
 
+    scale_displacement: int = 1e3
+    energy_scalar: int = 1000.
+
+    recreate_training_data: bool = True #False #True
+    grad_accum_steps: int = 64  # 1 32
+
+    input_batch_norm: bool = False
+    latent_dimension: int = 512 #256  # 128 64
+    internal_layer_count: int = 1 #0  # 0 1
+    processor_layer_count: int = 1  # 0 1
+    message_passes_sparse: int = 18#4 #18  # 1 8 12 ####
+    message_passes_dense: int = 18 #4 #18  # 1 8 12 ####
+    # layer_norm=True
+
+    skinning_as_net: bool = False 
+
+mtd = MainTrainingData()
 
 @dataclass
 class TrainingData:
@@ -24,7 +43,7 @@ class TrainingData:
 
     dataset: str = "calculator"  # synthetic # calculator
     # final_time: float = 6.01  # 2
-    mesh_density: int = 32
+    mesh_density: int = 16 #32
     adaptive_training_mesh_scale: Optional[float] = 0.0  # 0.8  # 0.1
 
     forces_random_scale: float = 4.0
@@ -47,10 +66,11 @@ class TrainingData:
 
     raport_at_examples: int = 256 #* 64 // #4
     save_at_epochs: int = 1
-    validate_at_epochs: int = 5 # 3
+    validate_at_epochs: int = 1 #5 # 3
     validate_scenarios_at_epochs: Optional[int] = None  # 30  # None 3
 
-    batch_size: int = 1  # 4  # 8  # 1  # 16  # 32  # 16  # 32 # 256
+    batch_size: int = 1 #1  # 4  # 8  # 1  # 16  # 32  # 16  # 32 # 256
+    valid_batch_size: int = 1
     dataset_size: int = 32  # 256 * (1 if TEST else 1) #8)  # 2048)
 
     use_dataset_statistics: bool = False # #True
@@ -64,7 +84,7 @@ class TrainingData:
 
     attention_heads_count: Optional[int] = None  # None 1 3 5
 
-    initial_learning_rate: float = 2 * 1e-5 # 1e-4  # 1e-3  # 1e-3  # 1e-4 # 1e-5
+    initial_learning_rate: float = 1e-4 #2 * 1e-5 # 1e-4  # 1e-3  # 1e-3  # 1e-4 # 1e-5
     learning_rate_decay: float = 1.0  # 0.995
     final_learning_rate: float = initial_learning_rate  # 1e-6
 

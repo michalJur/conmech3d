@@ -8,6 +8,7 @@ import numpy as np
 from conmech.dynamics.dynamics import _get_deform_grad
 from conmech.helpers import jxh, lnh, nph
 from conmech.helpers.config import SimulationConfig
+from deep_conmech.training_config import mtd
 
 
 def _get_penetration_positive(displacement_step, normals, initial_penetration):
@@ -367,8 +368,9 @@ class EnergyFunctions:
             use_constant_contact_integral=simulation_config.use_constant_contact_integral,
         )
 
+
         self._energy_obstacle_free = (
-            lambda acceleration_vector, args: _energy_obstacle_free(
+            lambda acceleration_vector, args: mtd.energy_scalar * _energy_obstacle_free(
                 acceleration_vector=acceleration_vector,
                 args=args,
                 static_args=static_args,
@@ -376,7 +378,7 @@ class EnergyFunctions:
         )
 
         self._energy_obstacle_colliding = (
-            lambda acceleration_vector, args: _energy_obstacle_colliding(
+            lambda acceleration_vector, args: mtd.energy_scalar * _energy_obstacle_colliding(
                 acceleration_vector=acceleration_vector,
                 args=args,
                 static_args=static_args,
@@ -409,7 +411,7 @@ class EnergyFunctions:
 
         self.compute_velocity_energy = compute_velocity_energy
 
-        self.mode = "automatic"
+        self.mode = "colliding" #"automatic"
 
         self.energy_obstacle_free = self._energy_obstacle_free
         self.energy_obstacle_colliding = self._energy_obstacle_colliding
@@ -461,7 +463,7 @@ class EnergyFunctions:
                 return self.energy_obstacle_free
             return self.energy_obstacle_colliding
 
-        print("Manual mode")
+        # print("Manual mode")
         if self.mode == "non-colliding":
             return self.energy_obstacle_free
         if self.mode == "colliding":
@@ -475,7 +477,7 @@ class EnergyFunctions:
                 return self.opti_free
             return self.opti_colliding
 
-        print("Manual mode")
+        # print("Manual mode")
         if self.mode == "non-colliding":
             return self.opti_free
         if self.mode == "colliding":

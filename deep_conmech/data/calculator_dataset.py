@@ -17,6 +17,7 @@ class CalculatorDataset(ScenariosDataset):
     def __init__(
         self,
         description: str,
+        all_scenarios,
         all_scenarios_fun,
         load_data_to_ram: bool,
         with_scenes_file: bool,
@@ -36,6 +37,7 @@ class CalculatorDataset(ScenariosDataset):
 
         super().__init__(
             description=f"{description}_calculator",
+            all_scenarios=all_scenarios,
             all_scenarios_fun=all_scenarios_fun,
             solve_function=solve_function,
             load_data_to_ram=load_data_to_ram,

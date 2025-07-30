@@ -13,7 +13,7 @@ from flax import linen as nn
 from deep_conmech.data.dataset_statistics import FeaturesStatistics
 from deep_conmech.helpers import thh
 from deep_conmech.scene.scene_input import SceneInput
-from deep_conmech.training_config import CLOSEST_COUNT, TrainingData
+from deep_conmech.training_config import mtd
 import sys
 from functools import reduce
 import operator
@@ -220,7 +220,7 @@ class LinkProcessorLayer(MessagePassingJax):
         _ = receivers, receivers_count
         latent_dim = new_edge_latents.shape[-1]
         # assuming special ordering (tested empirically)
-        result = new_edge_latents.reshape(-1, CLOSEST_COUNT * latent_dim)
+        result = new_edge_latents.reshape(-1, mtd.closest_count * latent_dim)
         return result
 
     def update(self, node_latents_to, aggregated_edge_latents):
@@ -252,14 +252,6 @@ class CustomGraphNetJax(nn.Module):
 
     @nn.compact
     def __call__(self, args: GraphNetArguments, train: bool):
-        latent_dimension = 256  # 128 64
-        internal_layer_count = 0 #0  # 0 1
-        processor_layer_count = 0  # 0 1
-        message_passes_sparse = 4 #18  # 1 8 12 ####
-        message_passes_dense = 4 #18  # 1 8 12 ####
-        dim = 3
-        input_batch_norm = False  # True
-        # layer_norm=True
 
         def propagate_messages(
             latent_dimension,
@@ -272,7 +264,7 @@ class CustomGraphNetJax(nn.Module):
             for _ in range(message_passes):
                 node_latents, edge_latents = ProcessorLayer(
                     latent_dimension=latent_dimension,
-                    internal_layer_count=processor_layer_count,
+                    internal_layer_count=mtd.processor_layer_count,
                     train=train,
                 )(node_latents, edge_latents, edge_index, receivers_count)
             return node_latents
@@ -286,7 +278,7 @@ class CustomGraphNetJax(nn.Module):
         ):
             updated_node_latents_dense = LinkProcessorLayer(
                 latent_dimension=latent_dimension,
-                internal_layer_count=internal_layer_count,
+                internal_layer_count=mtd.internal_layer_count,
                 train=train,
             )(
                 node_latents_sparse=node_latents_sparse,
@@ -315,45 +307,45 @@ class CustomGraphNetJax(nn.Module):
         edge_data_dense = get_data_norm("dense_edges", args.dense_edge_attr)
 
         node_latents_sparse = ForwardNet(
-            latent_dimension=latent_dimension,
-            internal_layer_count=internal_layer_count,
-            input_batch_norm=input_batch_norm,
+            latent_dimension=mtd.latent_dimension,
+            internal_layer_count=mtd.internal_layer_count,
+            input_batch_norm=mtd.input_batch_norm,
         )(node_data_sparse, train=train)
 
         edge_latents_sparse = ForwardNet(
-            latent_dimension=latent_dimension,
-            internal_layer_count=internal_layer_count,
-            input_batch_norm=input_batch_norm,
+            latent_dimension=mtd.latent_dimension,
+            internal_layer_count=mtd.internal_layer_count,
+            input_batch_norm=mtd.input_batch_norm,
         )(edge_data_sparse, train=train)
 
         edge_latents_multilayer = ForwardNet(
-            latent_dimension=latent_dimension,
-            internal_layer_count=internal_layer_count,
-            input_batch_norm=input_batch_norm,
+            latent_dimension=mtd.latent_dimension,
+            internal_layer_count=mtd.internal_layer_count,
+            input_batch_norm=mtd.input_batch_norm,
         )(edge_data_multilayer, train=train)
 
         if node_data_dense is None:
             node_latents_dense = None
         else:
             node_latents_dense = ForwardNet(
-                latent_dimension=latent_dimension,
-                internal_layer_count=internal_layer_count,
-                input_batch_norm=input_batch_norm,
+                latent_dimension=mtd.latent_dimension,
+                internal_layer_count=mtd.internal_layer_count,
+                input_batch_norm=mtd.input_batch_norm,
             )(node_data_dense, train=train)
 
         edge_latents_dense = ForwardNet(
-            latent_dimension=latent_dimension,
-            internal_layer_count=internal_layer_count,
-            input_batch_norm=input_batch_norm,
+            latent_dimension=mtd.latent_dimension,
+            internal_layer_count=mtd.internal_layer_count,
+            input_batch_norm=mtd.input_batch_norm,
         )(edge_data_dense, train=train)
 
         updated_node_latents_sparse = node_latents_sparse + propagate_messages(
-            latent_dimension=latent_dimension,
+            latent_dimension=mtd.latent_dimension,
             node_latents=node_latents_sparse,
             edge_latents=edge_latents_sparse,
             edge_index=args.sparse_edge_index,
             receivers_count=node_latents_sparse.shape[0],
-            message_passes=message_passes_sparse,
+            message_passes=mtd.message_passes_sparse,
         )
 
         # net_output_sparse = ForwardNet(
@@ -366,7 +358,7 @@ class CustomGraphNetJax(nn.Module):
         # return net_output_sparse
 
         updated_node_latents_dense = move_to_dense(
-            latent_dimension=latent_dimension,
+            latent_dimension=mtd.latent_dimension,
             node_latents_sparse=updated_node_latents_sparse,
             node_latents_dense=node_latents_dense,
             edge_latents_multilayer=edge_latents_multilayer,
@@ -374,23 +366,23 @@ class CustomGraphNetJax(nn.Module):
         )
 
         updated_node_latents_dense = updated_node_latents_dense + propagate_messages(
-            latent_dimension=latent_dimension,
+            latent_dimension=mtd.latent_dimension,
             node_latents=updated_node_latents_dense,
             edge_latents=edge_latents_dense,
             edge_index=args.dense_edge_index,
             receivers_count=updated_node_latents_dense.shape[0],
-            message_passes=message_passes_dense,
+            message_passes=mtd.message_passes_dense,
         )
 
         net_output_dense = ForwardNet(
-            latent_dimension=latent_dimension,
-            internal_layer_count=internal_layer_count,
-            output_linear_dim=dim,
+            latent_dimension=mtd.latent_dimension,
+            internal_layer_count=mtd.internal_layer_count,
+            output_linear_dim=mtd.dimension,
             layer_norm=False,
         )(updated_node_latents_dense, train=train)
 
         # net_output_dense = get_data_norm("target_normalized_new_displacement", scaled_net_output_dense)
-        return net_output_dense
+        return net_output_dense / mtd.scale_displacement
 
     def get_params(self, sample_args, init_rng):
         rngs_dict = {"params": init_rng}

@@ -31,8 +31,8 @@ from deep_conmech.graph.logger import Logger
 from deep_conmech.graph.loss_raport import LossRaport
 from deep_conmech.graph.net_jax import CustomGraphNetJax, GraphNetArguments
 from deep_conmech.helpers import thh
-from deep_conmech.scene.scene_input import SCALE, SceneInput
-from deep_conmech.training_config import GRAD_ACCUM_STEPS, RECREATE_TRAINING_DATA, TrainingConfig
+from deep_conmech.scene.scene_input import SceneInput
+from deep_conmech.training_config import mtd, TrainingConfig
 from torch.utils.data.distributed import DistributedSampler
 from jax import tree_util
 
@@ -88,6 +88,7 @@ class GraphModelDynamicJax:
         self.checkpointer = orbax.checkpoint.PyTreeCheckpointer()
         self.epoch = 0
         self.examples_seen = 0
+        self.validation_examples_seen = 0
 
         self.logger.save_parameters_and_statistics() ###
 
@@ -101,6 +102,7 @@ class GraphModelDynamicJax:
             base_dataset.get_valid_dataloader(dataset)
             for dataset in self.all_validation_datasets
         ]
+        all_validation_examples_seen = [0 for _ in self.all_validation_datasets]
 
         train_devices = jax.local_devices()
         validate = len(self.all_validation_datasets) > 0
@@ -161,31 +163,55 @@ class GraphModelDynamicJax:
         ###
 
         # Saving initial checkpoint
-        self.save_checkpoint(states=train_states)
+        # self.save_checkpoint(states=train_states)
     
         while (
             self.config.max_epoch_number is None
             or self.epoch < self.config.max_epoch_number
         ):
+            
+            cmh.save_to_log(f"----EPOCH {self.epoch}----")
+            
+            if self.is_at_skip(self.config.td.save_at_epochs):
+                self.save_checkpoint(states=train_states)
+
+            if self.is_at_skip(self.config.td.validate_at_epochs) and validate:
+                validation_states = rereplicate_states(train_states, validation_devices)
+                for i, dataloader in enumerate(all_valid_dataloaders):
+                    old_examples_seen = all_validation_examples_seen[i]
+                    _, new_examples_seen = self.iterate_dataset(
+                        states=validation_states,
+                        dataloader=dataloader,
+                        train=False,
+                        tqdm_description=f"VAL: {self.epoch} GPUS: {len(validation_devices)}",
+                        raport_description=dataloader.dataset.description,
+                        devices=validation_devices,
+                        examples_seen=old_examples_seen,
+                    )
+                    all_validation_examples_seen[i] = new_examples_seen
+
             self.epoch += 1
-            if self.epoch > 1 and RECREATE_TRAINING_DATA:
+            if self.epoch > 1 and mtd.recreate_training_data:
                 print("----RECREATING DATA----")
                 self.train_dataset.reset(epoch=self.epoch)
-                self.train_dataset.initialize_data(force_recreate=True, clear_all=False)
+                self.train_dataset.initialize_data(force_recreate=True)
                 train_dataloader = base_dataset.get_train_dataloader(self.train_dataset)
 
             jax.clear_caches()
             train_states = sync_batch_stats(train_states)
 
             def training_fun():
-                return self.iterate_dataset(
+                states, new_examples_seen = self.iterate_dataset(
                     states=train_states,
                     dataloader=train_dataloader,
                     train=True,
-                    tqdm_description=f"GPUS: {len(train_devices)} EPOCH: {self.epoch}",  # , lr: {self.lr:.6f}",
+                    tqdm_description=f"EPOCH: {self.epoch} GPUS: {len(train_devices)}",  # , lr: {self.lr:.6f}",
                     raport_description="Training",
                     devices=train_devices,
+                    examples_seen=self.examples_seen,
                 )
+                self.examples_seen = new_examples_seen
+                return states
 
             if self.config.profile_training:
                 # https://github.com/google/jax/issues/13009
@@ -193,21 +219,6 @@ class GraphModelDynamicJax:
                     train_states = training_fun()
             else:
                 train_states = training_fun()
-
-            if self.is_at_skip(self.config.td.save_at_epochs):
-                self.save_checkpoint(states=train_states)
-
-            if self.is_at_skip(self.config.td.validate_at_epochs) and validate:
-                validation_states = rereplicate_states(train_states, validation_devices)
-                for dataloader in all_valid_dataloaders:
-                    _ = self.iterate_dataset(
-                        states=validation_states,
-                        dataloader=dataloader,
-                        train=False,
-                        tqdm_description=f"GPUS: {len(validation_devices)} VAL:",
-                        raport_description=dataloader.dataset.description,
-                        devices=validation_devices,
-                    )
 
                 # TODO: Check if needed, add assert
                 print("----REREPLICATING TRAIN STATE----")
@@ -310,7 +321,8 @@ class GraphModelDynamicJax:
         train: bool,
         tqdm_description: str,
         raport_description: str,
-        devices
+        devices,
+        examples_seen: int
     ):
         batch_tqdm = cmh.get_tqdm(
             dataloader, desc=tqdm_description, config=self.config, position=0
@@ -318,55 +330,61 @@ class GraphModelDynamicJax:
         if train and dataloader.sampler is DistributedSampler:
             dataloader.sampler.set_epoch(self.epoch)
 
-        mean_loss_raport = LossRaport()
         accum_loss = 0.0
         accum_counter = 0
 
+        total_loss = 0.0
+        total_counter = 0
+
         # gc.disable()
 
-        for batch_id, batch_data in enumerate(batch_tqdm):
-            states, loss_raport = self.calculate_loss(
+        for batch_data in batch_tqdm:
+            # for d in batch_data:
+            #     print(d[2])
+            # print("---")
+            count = len(batch_data)
+            states, loss = self.calculate_loss(
                 states, batch_data=batch_data, devices=devices, train=train
             )
 
             # TODO: Check / assert state consistency across GPUs
             # TODO: Check if data are randomized
-            # mean_loss_raport.add(loss_raport)
-            mean_loss_raport = loss_raport ###
-            if train:
-                self.examples_seen += loss_raport.count  # * self.world_size
+            examples_seen += count
 
-                # Accumulate loss for reporting at optimizer update
-                accum_loss += loss_raport.main
-                accum_counter += 1
+            self.logger.writer.add_scalar(
+                    f"Loss/{raport_description}/Step",
+                    loss,
+                    examples_seen,
+            )
 
-                # Report only at optimizer update
-                if accum_counter == GRAD_ACCUM_STEPS:
-                    avg_loss = accum_loss / GRAD_ACCUM_STEPS
-                    self.logger.writer.add_scalar(
-                        "Loss/OptimizerStep/main",
-                        avg_loss,
-                        self.examples_seen,
-                    )
-                    accum_loss = 0.0
-                    accum_counter = 0
-
-            # mean_loss_raport = loss_raport
-            loss_description = f"{tqdm_description} loss: {(mean_loss_raport.main):.5f}"
-            should_raport = self.should_raport_training() if train else self.should_raport_validation(batch_id=batch_id, batches_count=len(batch_tqdm))
-            
-            if should_raport:
-                self.save_raport(
-                    states=states,
-                    mean_loss_raport=mean_loss_raport,
-                    description=raport_description,
+            accum_loss += loss
+            accum_counter += 1
+            # Report only at optimizer update
+            if accum_counter == mtd.grad_accum_steps:
+                avg_loss = accum_loss / accum_counter
+                self.logger.writer.add_scalar(
+                    f"Loss/{raport_description}/OptimizerStep",
+                    avg_loss,
+                    examples_seen,
                 )
-                mean_loss_raport = LossRaport()
-                loss_description += " - raport saved"
+                accum_loss = 0.0
+                accum_counter = 0
+
+            total_loss += loss
+            total_counter += 1
+            loss_description = f"{tqdm_description} loss: {(loss):.5f}"
             batch_tqdm.set_description(loss_description)
 
         # gc.enable()
-        return states
+        avg_total_loss = total_loss / total_counter
+        
+        self.logger.writer.add_scalar(
+            f"Loss/{raport_description}/AllData",
+            avg_total_loss,
+            examples_seen,
+        )
+        
+        return states, examples_seen
 
     def should_raport_training(self):
         return self.examples_seen % self.config.td.raport_at_examples == 0
@@ -427,8 +445,6 @@ class GraphModelDynamicJax:
 
         data = [get_layer_list_and_target_data(bd) for bd in batch_data]
 
-        compare = False
-
         all_target_data = [
             data[d][1].normalized_new_displacement for d in range(devices_count)
         ]  ### NO AS TYPE .astype(np.float32)
@@ -436,7 +452,7 @@ class GraphModelDynamicJax:
             all_target_data, devices
         )  # TODO: check order with pmap
 
-        if not compare:
+        if not mtd.skinning_as_net:
             all_args = [
                 prepare_input(layer_list)
                 for layer_list in [data[d][0] for d in range(devices_count)]
@@ -452,7 +468,7 @@ class GraphModelDynamicJax:
 
         else:
             other_target_data = [
-                data[d][1].normalized_new_displacement_skinning
+                np.array(data[d][1].normalized_new_displacement_skinning)
                 for d in range(devices_count)
             ]
             sharded_other_targets = jax.device_put_sharded(other_target_data, devices)
@@ -461,8 +477,10 @@ class GraphModelDynamicJax:
                 sharded_other_targets=sharded_other_targets,
             )
 
-        displacement_loss = jnp.mean(losses) / SCALE
+        displacement_loss = float(jnp.mean(losses))
         # print(displacement_loss)
+        return states, displacement_loss
+
 
         batch_main_layer = data[0][0][0]
         graph_sizes_base = get_graph_sizes(batch_main_layer)
@@ -489,7 +507,7 @@ def get_sample_args(dataloader):
 def initialize_states(config, dataloader, devices, statistics):
     sample_args = get_sample_args(dataloader)
     init_state = create_train_state(
-        jax.random.PRNGKey(42), sample_args, config.td.initial_learning_rate, statistics, grad_accum_steps=GRAD_ACCUM_STEPS
+        jax.random.PRNGKey(42), sample_args, config.td.initial_learning_rate, statistics, grad_accum_steps=mtd.grad_accum_steps
     )
 
     states = flax.jax_utils.replicate(init_state, devices=devices)
@@ -531,7 +549,7 @@ def convert_to_jax(layer_list, target_data=None):
     if target_data is None:
         return layer_list
     target_data.normalized_new_displacement = (
-        thh.convert_tensor_to_jax(target_data.normalized_new_displacement) * SCALE
+        thh.convert_tensor_to_jax(target_data.normalized_new_displacement)
     )
     # target_data.normalized_new_displacement_skinning = (
     #     thh.convert_tensor_to_jax(target_data.normalized_new_displacement_skinning)
@@ -580,7 +598,7 @@ def solve( ###
         # TODO: ADD STOP GRADIENT
 
     with timer["jax_net"]:
-        scene.norm_lifted_new_displacement = apply_net(args) / SCALE
+        scene.norm_lifted_new_displacement = apply_net(args)
 
     with timer["jax_translation"]:
         # print('Using recenter_by_new_reduced')

@@ -60,8 +60,43 @@ def set_compiled_optimization_functions(energy_functions, hes_inv, x0, args):
 def set_and_get_opti_fun(energy_functions, scene, hes_inv, x0, args):
     if energy_functions.opti_free is None:
         set_compiled_optimization_functions(energy_functions, hes_inv, x0, args)
+        # Initial step
+        opti_fun = energy_functions.opti_free
+        return opti_fun
     opti_fun = energy_functions.get_optimization_function(scene)
     return opti_fun
+
+
+import optax
+import jax.numpy as jnp
+import jax
+
+# @jax.jit() #static_argnames=['fun', 'opt', 'max_iter', 'tol'])
+def run_opt(init_params, fun, opt, max_iter, tol):
+  value_and_grad_fun = optax.value_and_grad_from_state(fun)
+
+  def step(carry):
+    params, state = carry
+    value, grad = value_and_grad_fun(params, state=state)
+    updates, state = opt.update(
+        grad, state, params, value=value, grad=grad, value_fn=fun
+    )
+    params = optax.apply_updates(params, updates)
+    return params, state
+
+  def continuing_criterion(carry):
+    _, state = carry
+    iter_num = optax.tree_utils.tree_get(state, 'count')
+    grad = optax.tree_utils.tree_get(state, 'grad')
+    err = optax.tree_utils.tree_l2_norm(grad)
+    return (iter_num == 0) | ((iter_num < max_iter) & (err >= tol))
+
+  init_carry = (init_params, opt.init(init_params))
+  final_params, final_state = jax.lax.while_loop(
+      continuing_criterion, step, init_carry
+  )
+  return final_params, final_state
+
 
 
 class Calculator:
@@ -85,28 +120,46 @@ class Calculator:
         else:
             opti_fun = set_and_get_opti_fun(energy_functions, scene, hes_inv, x0, args)
 
+        if False:
+            opt = optax.lbfgs()
+            if not scene.is_colliding():
+                fun = lambda x: energy_functions.energy_obstacle_free(x,args)
+            else:
+                fun = lambda x: energy_functions.energy_obstacle_colliding(x,args)
+            print(
+                f'Initial value: {fun(x0):.2e} '
+                f'Initial gradient norm: {optax.tree_utils.tree_l2_norm(jax.grad(fun)(x0)):.2e}'
+            )
+            final_params, final_state = run_opt(x0, fun, opt, max_iter=100, tol=1e-8)
+
+            print(
+                f'Final value: {fun(final_params):.2e}, '
+                f'Final gradient norm: {optax.tree_utils.tree_l2_norm(jax.grad(fun)(final_params)):.2e}'
+            )
+            return np.asarray(final_params)  
+
         state = cmh.profile(
             lambda: opti_fun(x0, args),
             baypass=True,
         )
-
+            
         # if cmh.get_from_os("JAX_ENABLE_X64"):
         #     assert state.converged
 
         # print("f_k: ", state.f_k, ' k: ', state.k, ' x_k norm: ', jnp.linalg.norm(state.x_k), ' x shape: ', len(state.x_k))
-        assert not jnp.isnan(state.x_k).any()
-        # if jnp.isnan(state.x_k).any():
-        #     cmh.Console.print_fail("NaN in x_k, returning zero")
-        #     return np.asarray(jnp.zeros_like(state.x_k))
-
+        # assert not jnp.isnan(state.x_k).any()
+        if jnp.isnan(state.x_k).any():
+            cmh.save_to_log("NaN in x_k, returning None", fail=2)
+            return None
+            return np.asarray(x0)
 
         if verbose and not state.converged:
             if state.status == 5:
-                cmh.Console.print_warning("Linesearch error")
+                cmh.save_to_log("Linesearch error", fail=1)
             elif state.status == 1:
-                cmh.Console.print_fail("Maxiter error")
+                cmh.save_to_log("Maxiter error", fail=2)
             else:
-                cmh.Console.print_fail(f"Status: {state.status}")
+                cmh.save_to_log(f"Status: {state.status}", fail=2)
         # Validate https://github.com/google/jax/issues/6898
         return np.asarray(state.x_k)  # , state
 
@@ -437,7 +490,8 @@ class Calculator:
                 ),
                 baypass=True,
             )
-
+        if normalized_a_vector_np is None:
+            return None
         normalized_a_vector = normalized_a_vector_np.reshape(-1, 1)
         return nph.unstack(normalized_a_vector, scene.dimension)
 

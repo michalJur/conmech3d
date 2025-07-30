@@ -15,7 +15,7 @@ from typing import Callable, Iterable
 import psutil
 from tqdm import tqdm
 
-from conmech.helpers.config import Config
+from conmech.helpers.config import RUN_TIME, Config
 
 
 def get_from_os(name):
@@ -217,3 +217,13 @@ class HiddenPrints:
 
 def copy_folder(src, dst):
     shutil.copytree(src, dst, dirs_exist_ok=True)
+
+def save_to_log(error, fail=0):
+    if fail == 0:
+        print(error)
+    elif fail == 1:
+        Console.print_warning(error)
+    elif fail == 2:
+        Console.print_fail(error)
+    with open(f"output/{RUN_TIME}_optimization_errors.log", "a") as log_file:
+        log_file.write(f"{error}\n")

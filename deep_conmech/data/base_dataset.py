@@ -50,7 +50,7 @@ def get_valid_dataloader(dataset: "BaseDataset"):
         dataset=dataset,
         rank=dataset.rank,
         world_size=dataset.world_size,
-        batch_size=dataset.config.td.batch_size,
+        batch_size=dataset.config.td.valid_batch_size,
         num_workers=dataset.config.dataloader_workers,
         shuffle=False,
         load_data=True,  # False,
@@ -186,15 +186,16 @@ class BaseDataset:
         cmh.clear_folder(self.tmp_directory)
         cmh.create_folder(self.tmp_directory)
 
-    def initialize_data(self, clear_all):
+    def clear_all_data(self):
+        print("Clearing old data")
+        cmh.clear_folder(self.main_directory)
+        
+    def initialize_data(self, force_recreate):
         print(f"----NODE {self.rank}: INITIALIZING DATASET ({self.data_id})----")
-        if clear_all:
-            print("Clearing old data")
-            cmh.clear_folder(self.main_directory)
     
         self._create_folders()
         self._load_indices()
-        if self._check_indices() :
+        if not force_recreate and self._check_indices():
             print(
                 f"Taking prepared dataset ({self.get_size(self.features_data_path):.2f} GB)"
             )
@@ -275,7 +276,7 @@ class BaseDataset:
     def get_size(self, data_path):
         return os.path.getsize(data_path) / 1024**3
 
-    def save_features_and_target(self, scene):
+    def get_features_and_target(self, scene, scenario_name, episode_step):
         layers_list = [
             scene.get_features_data(layer_number=layer_number)
             for layer_number in range(len(scene.all_layers))
@@ -283,8 +284,11 @@ class BaseDataset:
         target_data = scene.get_target_data()
 
         graph_data = GraphData(
-            layer_list=layers_list, target_data=target_data, scene=None
+            layer_list=layers_list, target_data=target_data, scene=None, scenario_name=scenario_name, episode_step=episode_step
         )
+        return graph_data
+    
+    def save_features_and_target(self, graph_data):
         pkh.append_data(
             data=graph_data,
             data_path=self.features_data_path,
@@ -302,7 +306,7 @@ class BaseDataset:
             position=process_id,
         )
         for scene in self.get_scenes_iterator(data_tqdm=data_tqdm):
-            self.save_features_and_target(scene)
+            self.save_features_and_target(self.get_features_and_target(scene))
         return True
 
     def get_statistics(self):
@@ -611,6 +615,8 @@ class BaseDataset:
     def _getitem_jax(self, index: int):
         def get_list(index):
             graph_data = self.get_features_and_targets_data(index)
+            if hasattr(graph_data, "scenario_name") and hasattr(graph_data, "episode_step"):
+                return [graph_data.layer_list, graph_data.target_data, (graph_data.scenario_name, graph_data.episode_step)]
             return [graph_data.layer_list, graph_data.target_data]
 
         if self.item_fn:

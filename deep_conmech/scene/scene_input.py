@@ -17,9 +17,7 @@ from deep_conmech.data.data_classes import MeshLayerData, TargetData
 from deep_conmech.helpers import thh
 from deep_conmech.scene.scene_layers import MeshLayerLinkData
 from deep_conmech.scene.scene_randomized import SceneRandomized
-
-SCALE = 1e3
-SCALE_IN = 1e1
+from deep_conmech.training_config import mtd
 
 @numba.njit
 def get_indices_from_graph_sizes_numba(graph_sizes: List[int]):
@@ -86,8 +84,8 @@ class SceneInput(SceneRandomized):
                 return jnp.hstack(
                     (
                         get_column(scene.input_initial_nodes),  # cached
-                        get_column(scene.new_displacement_norm_by_itself  * SCALE_IN) #NEW
-                        # get_column(scene.input_displacement_old),
+                        get_column(scene.new_displacement_norm_by_itself * mtd.scale_displacement), #NEW
+                        get_column(scene.input_displacement_old  * mtd.scale_displacement),
                         # get_column(scene.input_velocity_old),
                         # get_column(scene.input_forces),
                     )
@@ -160,16 +158,15 @@ class SceneInput(SceneRandomized):
             # input_forces = prepare_nodes(scene.input_forces)
             if reduced:
                 input_initial_nodes = prepare_nodes(self.reduced.input_initial_nodes)
+                old_displacement = prepare_nodes(self.reduced.input_displacement_old)
                 new_displacement = prepare_nodes(
                     self.reduced.new_displacement_norm_by_itself
                 )
-                # new_displacement = prepare_nodes(
-                #     scene.to_normalized_displacement_rotated_displaced(scene.lifted_acceleration)
-                # )
                 return jnp.hstack(
                     (
+                        new_displacement * mtd.scale_displacement,
+                        old_displacement * mtd.scale_displacement,
                         # input_initial_nodes,
-                        new_displacement * SCALE_IN,
                         # linear_acceleration,
                         # boundary_normals,
                         # boundary_friction,
@@ -193,15 +190,21 @@ class SceneInput(SceneRandomized):
                 #     randomization = get_random(scale= (scene.time_step**2))
                 #     new_randomized_displacement += randomization
 
+
                 return None
-                jnp.hstack(
+                normalized_new_displacement_skinning = prepare_nodes(
+                    self.new_displacement_norm_by_reduced_new_displacement_skinning
+                )
+
+                return jnp.hstack(
                     # TODO: Add previous accelerations
                     (
+                        normalized_new_displacement_skinning * mtd.scale_displacement,
                         # input_initial_nodes,
                         # prepare_nodes(new_randomized_displacement),
                         # new_lowered_displacement,
                         # linear_acceleration,
-                        0 * boundary_normals,
+                        # 0 * boundary_normals,
                         # boundary_friction,
                         # boundary_normal_response,
                         # boundary_volume,
@@ -294,12 +297,9 @@ class SceneInput(SceneRandomized):
         # target_data.new_displacement = thh.to_double(self.get_lifted_displacement())
         ###
 
-        # skinning_acceleration = np.array(
-        #     self.lower_acceleration_from_position(self.reduced.lifted_acceleration)
-        # )
-        # target_data.normalized_new_displacement_skinning = thh.to_double(
-        #     self.get_norm_by_reduced_lifted_new_displacement(skinning_acceleration)
-        # )
+        target_data.normalized_new_displacement_skinning = thh.to_double(
+            self.new_displacement_norm_by_reduced_new_displacement_skinning
+        )
 
         return target_data
 

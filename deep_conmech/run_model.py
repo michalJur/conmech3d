@@ -36,7 +36,7 @@ from deep_conmech.data.synthetic_dataset import SyntheticDataset
 from deep_conmech.graph.model_jax import GraphModelDynamicJax, save_tf_model
 from deep_conmech.graph.net_jax import CustomGraphNetJax
 from deep_conmech.helpers import dch
-from deep_conmech.training_config import RECREATE_TRAINING_DATA, TrainingConfig, TrainingData, get_train_config
+from deep_conmech.training_config import mtd, TrainingConfig, TrainingData, get_train_config
 
 
 def setup_distributed(rank: int, world_size: int):
@@ -63,12 +63,14 @@ def initialize_data(config: TrainingConfig):
     train_dataset = get_train_dataset(
         config.td.dataset, config=config, device_count=device_count
     )
-    train_dataset.initialize_data(clear_all=RECREATE_TRAINING_DATA)
+    # if mtd.recreate_training_data:
+        # train_dataset.clear_all_data()
+    train_dataset.initialize_data(force_recreate=mtd.recreate_training_data)
     all_validation_datasets = get_all_val_datasets(
         config=config, rank=0, world_size=1, device_count=device_count  # 1
     )
     for datasets in all_validation_datasets:
-        datasets.initialize_data()
+        datasets.initialize_data(force_recreate=False)
 
     return train_dataset, all_validation_datasets
 
@@ -211,7 +213,8 @@ def get_train_dataset(
     elif dataset_type == "calculator":
         train_dataset = CalculatorDataset(
             description="train",
-            all_scenarios_fun=lambda: scenarios.all_train(config.td, config.sc),
+            all_scenarios=None,
+            all_scenarios_fun=scenarios.all_train(config.td, config.sc),
             load_data_to_ram=config.load_training_data_to_ram,
             with_scenes_file=config.with_train_scenes_file,
             randomize=True,
@@ -237,7 +240,8 @@ def get_all_val_datasets(
         all_val_datasets.append(
             CalculatorDataset(
                 description=description,
-                all_scenarios=all_scenarios,
+                all_scenarios = all_scenarios,
+                all_scenarios_fun=None,
                 load_data_to_ram=config.load_validation_data_to_ram,
                 with_scenes_file=False,
                 randomize=False,

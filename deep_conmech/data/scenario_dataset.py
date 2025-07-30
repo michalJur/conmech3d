@@ -1,4 +1,8 @@
 from ctypes import ArgumentError
+import gc
+import tempfile
+import os
+import pickle
 from typing import Callable, List, Optional
 
 import numpy as np
@@ -14,17 +18,12 @@ from deep_conmech.scene.scene_input import SceneInput
 from deep_conmech.training_config import TrainingConfig
 
 
-def check_and_get_dimension(scenarios):
-    dimensions = set([s.mesh_prop.dimension for s in scenarios])
-    if len(dimensions) != 1:
-        raise ArgumentError("Incorrect data")
-    return dimensions.pop()
-
 
 class ScenariosDataset(BaseDataset):
     def __init__(
         self,
         description: str,
+        all_scenarios,
         all_scenarios_fun: List[Scenario],
         solve_function: Callable,
         load_data_to_ram: bool,
@@ -36,11 +35,13 @@ class ScenariosDataset(BaseDataset):
         device_count: int,
         item_fn,
     ):
+        self.all_scenarios = all_scenarios
         self.all_scenarios_fun = all_scenarios_fun
+        self.data_count = None
 
         super().__init__(
             description=description,
-            dimension=None,
+            dimension=3, ###
             data_count=None,
             solve_function=solve_function,
             load_data_to_ram=load_data_to_ram,
@@ -57,9 +58,15 @@ class ScenariosDataset(BaseDataset):
 
     def reset(self, epoch):
         self.epoch = epoch
-        self.all_scenarios = self.all_scenarios_fun()
-        self.dimension=check_and_get_dimension(self.all_scenarios),
-        self.data_count=self.get_data_count(self.all_scenarios)
+        if self.all_scenarios:
+            test_scenarios = self.all_scenarios
+            self.scenarios_count = len(test_scenarios)
+        else:
+            self.generate_scenario, self.scenarios_count = self.all_scenarios_fun
+            scenario = self.generate_scenario()
+            test_scenarios = [scenario for _ in range(self.scenarios_count)]
+        self.data_count=self.get_data_count(test_scenarios)
+
 
 
     def get_data_count(self, scenarios):
@@ -118,7 +125,6 @@ class ScenariosDataset(BaseDataset):
             self.generate_data_process()
 
     def generate_data_process(self, num_workers: int = 1, process_id: int = 0):
-        assigned_scenarios = self.get_assigned_scenarios(num_workers, process_id)
         # tqdm_description = f"Generating data - process {process_id+1}/{num_workers}"
         # simulation_data_count = np.sum(
         #     [s.schedule.episode_steps for s in assigned_scenarios]
@@ -134,8 +140,17 @@ class ScenariosDataset(BaseDataset):
         # scenario_id = 0
         # scenario = assigned_scenarios[scenario_id]
 
-        for scenario_id, scenario in enumerate(assigned_scenarios):
-            # print(f"Scenario {scenario.name}")
+        all_steps = 0
+        if self.all_scenarios:
+            assigned_scenarios = self.get_assigned_scenarios(num_workers, process_id)
+        scenario_id = 0
+        while scenario_id < self.scenarios_count:
+            correct = True
+            if self.all_scenarios:
+                scenario = assigned_scenarios[scenario_id]
+            else:
+                scenario = self.generate_scenario()
+
             scene = self.get_scene(scenario=scenario, config=self.config)
             energy_functions = EnergyFunctions(
                     simulation_config=scene.simulation_config
@@ -144,27 +159,47 @@ class ScenariosDataset(BaseDataset):
                 simulation_config=scene.simulation_config
             )
 
-            time_tqdm = scenario.get_tqdm(desc=f"Simulating {scenario_id+1}/{len(assigned_scenarios)}", config=self.config)
+            message = f"Simulating {scenario_id+1}/{self.scenarios_count}"
+            time_tqdm = scenario.get_tqdm(desc=message, config=self.config)
+            cmh.save_to_log(message)
+            gc.collect()
+
+            tmp_filename = "output/graph_data_tmp"
+            open(tmp_filename, "wb").close()
+
             for episode_step in time_tqdm:
                 current_time = episode_step * scene.time_step
 
                 forces = scenario.get_forces_by_function(scene, current_time)
                 scene.prepare(forces)
 
-                scene.reduced.exact_acceleration, _ = Calculator.solve(
+                reduced_exact_acceleration, _ = Calculator.solve(
                     scene=scene.reduced,
                     initial_a=scene.reduced.exact_acceleration,
                     energy_functions=reduced_energy_functions,
                 )
-                scene.exact_acceleration, _ = Calculator.solve(
+                exact_acceleration, _ = Calculator.solve(
                     scene=scene, energy_functions=energy_functions, initial_a=scene.exact_acceleration
                 )
+                if reduced_exact_acceleration is None or exact_acceleration is None:
+                    cmh.save_to_log(
+                        f"Scene {scenario.name} - episode step {episode_step} - NaN in acceleration, skipping",
+                        fail=2,
+                    )
+                    correct = False
+                    break
+                scene.reduced.exact_acceleration = reduced_exact_acceleration
+                scene.exact_acceleration = exact_acceleration
+
                 scene.reorient_and_set_lifted()
 
                 if self.with_scenes_file:
                     self.safe_save_scene(scene=scene, data_path=self.scenes_data_path)
                 else:
-                    self.save_features_and_target(scene=scene)
+                    graph_data = self.get_features_and_target(scene=scene, scenario_name=scenario.name, episode_step=episode_step)
+                    with open(tmp_filename, "ab") as tmp_file:
+                        pickle.dump(graph_data, tmp_file)
+                all_steps += 1
 
                 final_catalog = (
                     f"{self.config.output_catalog}/{self.config.current_time} - DATASET"
@@ -181,5 +216,21 @@ class ScenariosDataset(BaseDataset):
 
                 scene.iterate_self(scene.exact_acceleration)
 
+            if correct:
+                # Read all graph_data from temporary file and append using save_features_and_target
+                with open(tmp_filename, "rb") as tmp_file:
+                    try:
+                        while True:
+                            graph_data = pickle.load(tmp_file)
+                            self.save_features_and_target(graph_data)
+                    except EOFError:
+                        pass
+                # Clear temporary file
+                os.remove(tmp_filename)
+                scenario_id += 1
+
         # step_tqdm.set_description(f"{step_tqdm.desc} - done")
+        cmh.save_to_log(
+            f"Generated {all_steps} steps in {self.scenarios_count} scenarios"
+        )
         return True

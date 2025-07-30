@@ -71,3 +71,5 @@ class GraphData:
     layer_list: List[MeshLayerData]
     target_data: TargetData
     scene: float
+    scenario_name: str
+    episode_step: int

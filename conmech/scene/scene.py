@@ -347,9 +347,23 @@ class Scene(BodyForces):
     @property
     @mesh_normalization_decorator
     def new_displacement_norm_by_reduced_new_displacement(self):
+        return self.new_displacement_norm_by_reduced_new_displacement_inner(self.exact_acceleration)
+
+    @property
+    @mesh_normalization_decorator
+    def new_displacement_norm_by_reduced_new_displacement_skinning(self):
+        dense_skinning_acceleration = np.array(
+            self.lower_acceleration_from_position(self.reduced.exact_acceleration)
+        )
+        return self.new_displacement_norm_by_reduced_new_displacement_inner(dense_skinning_acceleration)
+
+
+
+    @mesh_normalization_decorator
+    def new_displacement_norm_by_reduced_new_displacement_inner(self, acceleration):
         assert hasattr(self, "reduced")
     
-        displacement_new = self.to_displacement(self.exact_acceleration)
+        displacement_new = self.to_displacement(acceleration)
         moved_nodes_new = self.initial_nodes + displacement_new
         
         reduced_displacement_new = self.reduced.to_displacement(self.reduced.exact_acceleration)
