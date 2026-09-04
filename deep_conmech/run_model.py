@@ -272,8 +272,12 @@ def get_newest_checkpoint_path_jax(config: TrainingConfig):
 
 
 def get_checkpoint_path(config: TrainingConfig=None):
+    # path = '/output/25.07.30-22.03.40 - JAX GRAPH MODELS/17543001184047 - EPOCH 3 - MODEL'
+    path = '/output/25.07.30-22.03.40 - JAX GRAPH MODELS/17544318286450 - EPOCH 4 - MODEL'
+    ### Only smaller bunny in training, larger model
+    # path = '/output/25.07.28-17.10.33 - JAX GRAPH MODELS/17538806991748 - EPOCH 50 - MODEL'
     ### Bunny and sphere in training, added slide scenario (?)
-    path = '/output/25.05.17-15.40.33 - JAX GRAPH MODELS/17476930222762 - EPOCH 19 - MODEL'
+    # path = '/output/25.05.17-15.40.33 - JAX GRAPH MODELS/17476930222762 - EPOCH 19 - MODEL'
     # path = '/output/25.05.17-15.40.33 - JAX GRAPH MODELS/17475248307028 - EPOCH 1 - MODEL'
     ### Sphere in training, no self collisions
     # path = '/output/25.05.15-08.21.41 - JAX GRAPH MODELS/17474288569620 - EPOCH 15 - MODEL'

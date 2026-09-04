@@ -70,11 +70,15 @@ def save_pca(projection, file_path="./output/PCA"):
     with open(file_path, "wb") as file:
         pickle.dump(projection, file)
 
+PCA_LATENT_DIM = 1000
+PCA_FILE_NAME = 'PCA_ec10000_ld10000_25.08.14-12.30.44'
+PCA_LOAD_FILE = f'/home/michal/Desktop/conmech3d/output/{PCA_FILE_NAME}'
 
-def load_pca(file_path="./output/PCA"):
+def load_pca(file_path=PCA_LOAD_FILE):
     with open(file_path, "rb") as file:
         projection = pickle.load(file)
-    # projection['matrix'] = projection['matrix'][:1].copy()
+    print("Changing projection")
+    projection['matrix'] = projection['matrix'][:PCA_LATENT_DIM].copy()
     return projection
 
 

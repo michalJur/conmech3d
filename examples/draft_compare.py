@@ -1,4 +1,6 @@
 from dotenv import load_dotenv
+
+from conmech.helpers.pca import PCA_FILE_NAME, PCA_LATENT_DIM
 load_dotenv()
 
 import os
@@ -24,7 +26,7 @@ def main():
       
     base_mode = "normal_with_reduced"
     other_modes = [
-        # "pca",
+        "pca",
         "skinning",
         "net",
     ]
@@ -32,14 +34,15 @@ def main():
 
     # copy_dir = None
     # copy_dir = '/home/michal/Desktop/conmech3d/output/25.05.14-00.01.24 - (17459852938233 - EPOCH 43 - MODEL) - compare'
-    copy_dir = '/home/michal/Desktop/conmech3d/output/BASE32'
+    # copy_dir = '/home/michal/Desktop/conmech3d/output/25.07.30-15.40.34 - (17538806991748 - EPOCH 50 - MODEL) - compare'
+    copy_dir = '/home/michal/Desktop/conmech3d/output/25.08.07-16.46.00 - (17544318286450 - EPOCH 4 - MODEL) - compare'
     # copy_dir = '/home/michal/Desktop/conmech3d/output/BASE64'
 
     config = get_train_config(shell=False, mode=None)
     checkpoint_path = get_checkpoint_path(config=config)
     label = checkpoint_path.split("/")[-1]
     main_dir = (
-        f"{config.output_catalog}/{config.current_time} - ({label}) - compare"
+        f"{config.output_catalog}/{config.current_time} - ({label}) - pca_ld{PCA_LATENT_DIM} - {PCA_FILE_NAME} - compare"
     )
 
     cmh.create_folders(main_dir)

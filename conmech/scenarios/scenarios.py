@@ -1005,7 +1005,19 @@ def generate_train_scenario(sc):
         normals_dim_plus = np.random.choice([0, 1, 2])
         slope = np.random.randint(-45, 45)
 
-        return get_train_scenario(
+        print (f'''
+get_train_scenario(
+    sc,
+    mesh_layer_proportion={mesh_layer_proportion},
+    forces_dim={forces_dim},
+    forces_dir={forces_dir},
+    scale_forces={scale_forces},
+    distance={distance},
+    normals_dim_plus={normals_dim_plus},
+    slope={slope},
+)
+        ''')
+        return get_train_scenario( 
             sc,
             mesh_layer_proportion=mesh_layer_proportion,
             forces_dim=forces_dim,
@@ -1188,8 +1200,50 @@ def all_compare(td, sc):
     final_time = 8.01
     mesh_density = 16
     mesh_layer_proportion = 2
+    # for i in range(4):
+        # generate_train_scenario(sc)
     return [
-                get_train_scenario(
+        get_train_scenario(
+    sc,
+    mesh_layer_proportion=2,
+    forces_dim=2,
+    forces_dir=1.0,
+    scale_forces=0.09,
+    distance=2.23,
+    normals_dim_plus=0,
+    slope=-22
+),
+get_train_scenario(
+    sc,
+    mesh_layer_proportion=2,
+    forces_dim=0,
+    forces_dir=-1.0,
+    scale_forces=1.63,
+    distance=2.5,
+    normals_dim_plus=1,
+    slope=37
+),
+get_train_scenario(
+    sc,
+    mesh_layer_proportion=2,
+    forces_dim=1,
+    forces_dir=1.0,
+    scale_forces=1.42,
+    distance=1.84,
+    normals_dim_plus=0,
+    slope=8
+),
+get_train_scenario(
+    sc,
+    mesh_layer_proportion=2,
+    forces_dim=0,
+    forces_dir=1.0,
+    scale_forces=0.8,
+    distance=2.31,
+    normals_dim_plus=2,
+    slope=-3
+),      
+             get_train_scenario(
                     sc,
                     mesh_layer_proportion = mesh_layer_proportion,
                     forces_dim = 1,
