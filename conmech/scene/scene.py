@@ -142,6 +142,7 @@ class Scene(BodyForces):
             ),
             base_velocity=args.base_velocity,
             base_energy_velocity=jax.jit(energy_functions.compute_velocity_energy)(
+                displacement=args.base_displacement,   # <-- new
                 velocity=args.base_velocity,
                 dx_big_jax=self.matrices.dx_big_jax,
                 element_initial_volume=self.matrices.element_initial_volume,

@@ -5,7 +5,7 @@ from typing import NamedTuple
 import jax.numpy as jnp
 import numpy as np
 
-from conmech.dynamics.dynamics import _get_deform_grad
+from conmech.dynamics.dynamics import _get_deform_grad, _get_jac
 from conmech.helpers import jxh, lnh, nph
 from conmech.helpers.config import SimulationConfig
 from deep_conmech.training_config import mtd
@@ -213,6 +213,12 @@ def _get_strain_green(deform_grad):
     deform_grad_t = deform_grad.transpose((0, 2, 1))
     return 0.5 * (deform_grad_t @ deform_grad - identity)
 
+def _get_strain_rate_green(deform_grad_u, jac_v):
+    # dot_E(u, v) = sym(F(u)^T @ grad(v))  — frozen F(u), linear in v
+    return 0.5 * (
+        deform_grad_u.transpose((0, 2, 1)) @ jac_v
+        + jac_v.transpose((0, 2, 1)) @ deform_grad_u
+    )
 
 def _compute_component_energy(
     component,
@@ -234,6 +240,27 @@ def _compute_component_energy(
     energy = element_initial_volume @ phi
     return energy
 
+def _compute_velocity_component_energy(
+    displacement,
+    velocity,
+    dx_big_jax,
+    element_initial_volume,
+    prop_1,
+    prop_2,
+    use_green_strain,
+):
+    if use_green_strain:
+        f_u = _get_deform_grad(displacement, dx_big_jax)   # frozen F(u)
+        jac_v = _get_jac(velocity, dx_big_jax)
+        eps_w = _get_strain_rate_green(deform_grad_u=f_u, jac_v=jac_v)
+    else:
+        f_v = _get_deform_grad(velocity, dx_big_jax)
+        eps_w = _get_strain_lin(deform_grad=f_v)            # unchanged: already correct
+
+    phi = prop_1 * (eps_w * eps_w).sum(axis=(1, 2)) + (prop_2 / 2.0) * (
+        (eps_w.trace(axis1=1, axis2=2) ** 2)
+    )
+    return element_initial_volume @ phi
 
 def _compute_displacement_energy(
     displacement, dx_big_jax, element_initial_volume, body_prop, use_green_strain
@@ -249,17 +276,17 @@ def _compute_displacement_energy(
 
 
 def _compute_velocity_energy(
-    velocity, dx_big_jax, element_initial_volume, body_prop, use_green_strain
+    displacement, velocity, dx_big_jax, element_initial_volume, body_prop, use_green_strain
 ):
-    return _compute_component_energy(
-        component=velocity,
+    return _compute_velocity_component_energy(
+        displacement=displacement,
+        velocity=velocity,
         dx_big_jax=dx_big_jax,
         element_initial_volume=element_initial_volume,
         prop_1=body_prop.theta,
         prop_2=body_prop.zeta,
         use_green_strain=use_green_strain,
     )
-
 
 def _compute_energy(acceleration, args, use_green_strain):
     new_displacement = args.base_displacement + acceleration * args.time_step**2
@@ -278,6 +305,7 @@ def _compute_energy(acceleration, args, use_green_strain):
 
     energy_new += (
         _compute_velocity_energy(
+            displacement=args.base_displacement,   # <-- frozen state, NOT new_displacement
             velocity=new_velocity,
             dx_big_jax=args.dx_big_jax,
             element_initial_volume=args.element_initial_volume,
@@ -399,9 +427,10 @@ class EnergyFunctions:
         self.compute_displacement_energy = compute_displacement_energy
 
         def compute_velocity_energy(
-            velocity, dx_big_jax, element_initial_volume, body_prop
+            displacement, velocity, dx_big_jax, element_initial_volume, body_prop
         ):
             return _compute_velocity_energy(
+                displacement=displacement,
                 velocity=velocity,
                 dx_big_jax=dx_big_jax,
                 element_initial_volume=element_initial_volume,
