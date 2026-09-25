@@ -8,6 +8,7 @@ import numpy as np
 from tqdm import tqdm
 
 from conmech.helpers import cmh, lnh, nph
+from conmech.helpers.config import RUN_TIME
 from conmech.properties.mesh_properties import MeshProperties
 from conmech.scenarios.scenarios import all_train
 from conmech.scene.scene import Scene
@@ -100,12 +101,11 @@ def get_data_scenes(scenes):
     return data, u_stack, u
 
 
-def get_data_dataset(dataloader, scene):
+def get_data_dataset(dataloader, scene, examples_count):
     data_list = []
-    count = 3000 # 2000
-    print(f"LIMIT TO {count}")
+    print(f"LIMIT TO {examples_count}")
     for i, sample in enumerate(tqdm(dataloader)):  # TODO: check randomness
-        if i+1 > count:
+        if examples_count is not None and i+1 > examples_count:
             break
         target = sample[0][1]
 
@@ -132,13 +132,13 @@ def get_data_dataset(dataloader, scene):
     return data, displacement_stack, displacement
 
 
-def get_projection(data, latent_dim):
+def get_projection(data, max_latent_dim):
     projection_mean = 0  # data.mean(axis=0)
 
     svd = jax.numpy.linalg.svd(data - projection_mean, full_matrices=False)
     # (svd[0] @ jnp.diag(svd[1]) @ svd[2])
 
-    projection_matrix = svd[2][:latent_dim]
+    projection_matrix = svd[2][:max_latent_dim]
     # projection_matrix = jax.experimental.sparse.eye(data.shape[1])
 
     return {"matrix": projection_matrix, "mean": projection_mean}
@@ -164,17 +164,23 @@ def p_from_vector(projection, latent):
     return nph.unstack(project_from_latent(projection, latent), dim=3)
 
 
-def run(dataloader, latent_dim, scene):
+def run(dataloader, scene):
+    examples_count = 10000  # 3000
+    max_latent_dim = examples_count #1000 #200 # Smaller or equal than examples_count
     if dataloader is None:
         scenes = get_scenes()
         data, sample_u_stack, sample_u = get_data_scenes(scenes)
     else:
         data, sample_u_stack, sample_u = get_data_dataset(
-            dataloader=dataloader, scene=scene
+            dataloader=dataloader, scene=scene, examples_count=examples_count
         )
 
-    original_projection = get_projection(data, latent_dim)
-    save_pca(original_projection)
+    original_projection = get_projection(data, max_latent_dim)
+    latent_dim = original_projection["matrix"].shape[0]
+
+    file_path = f"./output/PCA_ec{examples_count}_ld{latent_dim}_{RUN_TIME}"
+    print(f"Saving PCA to {file_path}")
+    save_pca(original_projection, file_path=file_path)
 
     # projection = load_pca()
     # latent = project_to_latent(projection, sample_u_stack)

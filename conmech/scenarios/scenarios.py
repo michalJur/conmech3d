@@ -1113,7 +1113,7 @@ def get_train_scenario(sc, mesh_layer_proportion, forces_dim, forces_dir, scale_
 
 
 def all_train(td, sc):
-    return lambda: generate_train_scenario(sc), 8 #32
+    return lambda: generate_train_scenario(sc), 32 #400 #8 #32
     # args = []
     data = []
     

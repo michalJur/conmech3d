@@ -137,7 +137,8 @@ def train_single(
     state = None
     # if config.load_newest_train:
     # path = '/home/mjureczka/Desktop/conmech3d/output/25.06.03-20.54.25 - JAX GRAPH MODELS/17492983130616 - EPOCH 9 - MODEL'
-    # state = model.get_checkpointed_net(path=path)
+    path = '/home/mjureczka/Desktop/conmech3d/output/25.07.30-22.03.40 - JAX GRAPH MODELS/17544318286450 - EPOCH 4 - MODEL'
+    state = model.get_checkpointed_net(path=path)
     # model.epoch = 9
     model.train(state=state)
 
@@ -173,11 +174,11 @@ def run_pca(config: TrainingConfig):
     dataset = get_train_dataset(
         dataset_type=config.td.dataset, config=config, device_count=1
     )
-    dataset.initialize_data()
+    dataset.initialize_data(force_recreate=False)
     dataloader = base_dataset.get_train_dataloader(dataset)
     scene = dataset.get_sample_scene()
 
-    pca.run(dataloader, latent_dim=200, scene=scene)
+    pca.run(dataloader, scene=scene)
 
     # simulation_runner.run_examples(
     #     all_scenarios=all_scenarios,

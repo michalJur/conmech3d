@@ -241,11 +241,11 @@ def main():
     
     # Step 2: Create individual plots for each metric
     print("\nCreating individual metric plots...")
-    plot_all_metrics(converted_files, save_plots=True, plot_dir="plots")
+    plot_all_metrics(converted_files, save_plots=True, plot_dir="output/plots")
     
     # Step 3: Create summary dashboard
     print("\nCreating summary dashboard...")
-    plot_summary_dashboard(converted_files, save_plot=True, plot_dir="plots")
+    plot_summary_dashboard(converted_files, save_plot=True, plot_dir="output/plots")
     
     print("\nAll done! Check the 'converted_logs' and 'plots' directories for outputs.")
 
